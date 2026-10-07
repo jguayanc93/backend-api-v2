@@ -93,7 +93,10 @@ let registro_cuota = async (resolve,reject,conexion,galleta,diferenciador,body,c
 
         await confirmar(conexion); abierta=false;
         conexion.close();
-        resolve({registrado:true, cuota:cuota, family:codfam, objetivo:porcentaje});
+        /////el mismo valor que acaba de entrar en la tabla: si no vino porcentaje se
+        /////guarda 0, y devolver NaN hacia que el JSON saliera con null
+        resolve({registrado:true, cuota:cuota, family:codfam,
+                 objetivo:isFinite(porcentaje)?porcentaje:0});
     }
     catch(err){
         console.error("[registro_cuota]",err);
