@@ -1,5 +1,4 @@
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
@@ -12,14 +11,13 @@ const {error_corrector} = require('../error/err1')
 
 async function prom_buscar(req,res,next) {
     try{
-        const primera_call = await consulta1(req,next);//galletas
         const segunda_call = await obtenerpromesa_conexion();
-        const tercera_call = await consulta2(segunda_call,req.body);
+        const tercera_call = await consulta2(segunda_call,req.body,req.usuario);
         const cuarta_call = await obtenerpromesa_conexion();
         const quinta_call = await consulta3(cuarta_call,tercera_call);
         const sexta_call = await consulta4(quinta_call);
         
-        res.status(200).json(sexta_call);
+        res.status(200).json({"status":"ok","codigo":0,"data":sexta_call});
     }
     catch(err){
         error_corrector(res,err);
@@ -28,9 +26,8 @@ async function prom_buscar(req,res,next) {
 
 function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(resolve,reject)) }
 
-function consulta1(req,next){ return new Promise((resolve,reject)=>galleta_credencial(resolve,reject,req,next)) }
 
-function consulta2(conexion,cuerpo){ return new Promise((resolve,reject)=>promo_vertodo(resolve,reject,conexion,cuerpo)) }
+function consulta2(conexion,cuerpo,galleta){ return new Promise((resolve,reject)=>promo_vertodo(resolve,reject,conexion,cuerpo,galleta)) }
 
 function consulta3(conexion,detallado){ return new Promise((resolve,reject)=>promo_buscador(resolve,reject,conexion,detallado)) }
 
@@ -61,15 +58,6 @@ function promocion_agrupados(resolve,reject,respuesta){
     resolve(filtro_final)
 }
 
-function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
-}
 
 
 

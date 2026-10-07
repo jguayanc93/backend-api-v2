@@ -1,30 +1,33 @@
-require('dotenv').config();
-const jws = require('jws');
-
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
-let {limpiar_detallado} = require('../../querys/cotizacion/limpiar_detallado')
-let {cabecera_corregido} = require('../../querys/cotizacion/corregir_cabecera')
-let {detallado_corregido} = require('../../querys/cotizacion/corregir_detallado')
+let {actualizar_cotizacion} = require('../../querys/cotizacion/actualizar_transaccion')
 ///////ESPACIO PARA FUNCIONES GENERALES
-
+const {leerGalleta} = require('../comunes/auth')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
 
+/////Reescribe el detalle de una cotizacion abierta del propio vendedor.
+/////
+/////El documento no viene en un campo propio: sale de la posicion 2 de la primera linea
+/////del cuerpo. Por eso se extrae antes de tocar nada y se valida la propiedad con el,
+/////no con lo que diga otro campo.
 async function modificacion(req,res,next) {
     try{
-        const primera_call = await consulta1(req,next);//galletas
-        const segundo_call = await consulta2(req.body.item);//(documento,totalisado,igv,totalisadoconigv)
-        const tercer_call = await obtenerpromesa_conexion();
-        const cuarta_call = await consulta3(tercer_call,segundo_call[0]);//limpiar el detallado
-        const quinta_call = await obtenerpromesa_conexion();
-        const sexta_call = await consulta4(quinta_call,segundo_call);///actualisar la cabecera
-        const setima_call = await obtenerpromesa_conexion();
-        const octava_call = await consulta5(setima_call,req.body.item);
-        
+        const payload = leerGalleta(req);
+        if(!payload) return error_corrector(res,"falsa galleta");
 
-        res.status(200).send(octava_call);
-        // res.status(200).json(JSON.stringify({"catorceava":catorceava_call}));
+        const documento = documentoDe(req.body ? req.body.item : null);
+        if(!documento) return error_corrector(res,"coti desconocida");
+
+        const conexion = await obtenerpromesa_conexion();
+        const hecho = await consulta1(conexion,payload,documento,req.body.item);
+
+        res.status(200).json({
+            "status":"ok", "codigo":0,
+            "documento":hecho.documento,
+            "lineas":hecho.lineas,
+            "totales":hecho.totales
+        });
     }
     catch(err){
         error_corrector(res,err);
@@ -33,40 +36,21 @@ async function modificacion(req,res,next) {
 
 function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(resolve,reject)) }
 
-function consulta1(req,next){ return new Promise((resolve,reject)=>galleta_credencial(resolve,reject,req,next)) }
-
-function consulta2(dataenviada){ return new Promise((resolve,reject)=>calcular(resolve,reject,dataenviada)) }
-
-function consulta3(conexion,documento){ return new Promise((resolve,reject)=>limpiar_detallado(resolve,reject,conexion,documento)) }
-
-function consulta4(conexion,montos){ return new Promise((resolve,reject)=>cabecera_corregido(resolve,reject,conexion,montos)) }
-
-function consulta5(conexion,dataenviada){ return new Promise((resolve,reject)=>detallado_corregido(resolve,reject,conexion,dataenviada)) }
-
-function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
+function consulta1(conexion,galleta,documento,lineas){
+    return new Promise((resolve,reject)=>actualizar_cotizacion(resolve,reject,conexion,galleta,documento,lineas))
 }
 
-function calcular(resolve,reject,dataenviada){
-    let documento='';
-    let totalisado=0;
-    let ordenador=1;
-    for(let itm in dataenviada){
-        dataenviada[itm][8]=ordenador;
-        totalisado+=parseFloat(dataenviada[itm][16]);
-        if(documento==='') documento=dataenviada[itm][2];
-        ordenador++;
+/////El numero de cotizacion y la numeracion de los items se toman del propio cuerpo:
+/////la posicion 2 lleva el ndocu y la 8 el numero de item, que se renumera por orden.
+function documentoDe(lineas){
+    let documento = '';
+    let orden = 1;
+    for(const indice in lineas){
+        lineas[indice][8] = orden;
+        if(documento === '') documento = String(lineas[indice][2]||'').trim();
+        orden++;
     }
-    let totalsoloigv=parseFloat((totalisado*0.18).toFixed(2));
-    let totalconigv=parseFloat((totalisado*1.18).toFixed(2));
-    
-    resolve([documento,totalisado,totalsoloigv,totalconigv])
+    return documento || null;
 }
 
 module.exports={modificacion}

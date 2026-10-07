@@ -21,6 +21,9 @@ router.get('/cobertura',grupos_modulos)
 router.get('/cartera',grupos_modulos)
 router.get('/zona',grupos_modulos)
 router.get('/especialista',grupos_modulos)
-// router.get('/zona',)
+/////los seis diferenciadores que existen en tbl_api_vendedores_diferenciador. Faltaban hp y
+/////jefatura, asi que esos vendedores recibian un 404 al abrir el menu.
+router.get('/jefatura',grupos_modulos)
+router.get('/hp',grupos_modulos)
 
 module.exports=router

@@ -1,3 +1,6 @@
+const {PROMDET} = require('../comunes/constantes');
+const beneficio = require('./beneficio');
+
 
 let descuento_correspondiente=(codigos,cotdetalle,tipopromo,promcabesa,promdetalle)=>{
     //////FALTA UN FOR PARA SABER EN Q NUMERO DE ITEM SE ENCUENTRA
@@ -13,10 +16,71 @@ let descuento_correspondiente=(codigos,cotdetalle,tipopromo,promcabesa,promdetal
     // tipometrica==1 ? cantidad_correspondiente_obtenida=m_valorizado() : cantidad_correspondiente_obtenida=m_unidades(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item);
     return cantidad_correspondiente_obtenida;
 }
-function vx_valorizado(){}
+/////COMBINACION 1 y 3: venta POR ITEM con metrica VALORIZADO.
+/////Estaba sin implementar (funcion vacia), asi que devolvia undefined.
+/////Regla: cuando el valorizado de un producto alcanza el monto de la promo se le
+/////otorga el beneficio, y si lo alcanza varias veces se le otorga varias veces.
+function vx_valorizado(codigos,cotdetalle,tipopromo,promcabesa,promdetalle){
+    let objeto_regresar={};
+    let items_correspondientes={};
+    let participantes=0;        ////cuantos productos del carrito estan en la promo
+    let faltante_minimo=null;   ////lo que le falta al que esta mas cerca de alcanzarla
+
+    /////se queda con los productos del carrito que estan en la promo y alcanzan el monto
+    for(let y in promdetalle){
+        const codigo=promdetalle[y][PROMDET.CODI];
+        if(!codigos.includes(codigo)) continue;
+
+        const monto_minimo=Number(promdetalle[y][PROMDET.MONTO]);   ////umbral EN DINERO
+        const dsct=Number(promdetalle[y][PROMDET.DSCT]);
+        const valorizado=Number(cotdetalle[codigo]["preciosinIGV"]);
+        const nombre_item=cotdetalle[codigo]["descripcion"];
+
+        /////monto 0 significaria division por cero: se descarta
+        participantes++;
+        if(monto_minimo>0 && valorizado>=monto_minimo){
+            items_correspondientes[codigo]=[valorizado,monto_minimo,dsct,nombre_item];
+        }
+        else if(monto_minimo>0){
+            const falta=monto_minimo-valorizado;
+            if(faltante_minimo===null || falta<faltante_minimo) faltante_minimo=falta;
+        }
+    }
+
+    let contador_momentane=0;
+    for(let x in items_correspondientes){
+        const [valorizado,monto_minimo,dsct,nombre_item]=items_correspondientes[x];
+
+        /////cuantas veces alcanza el monto (escalonado)
+        const veces=Math.floor(valorizado/monto_minimo);
+
+        /////base del porcentual: solo la parte que alcanzo el umbral, no el total de la linea
+        const base_porcentual=veces*monto_minimo;
+        const corresponde=beneficio.calcular(tipopromo,{veces:veces,umbral:monto_minimo,base:base_porcentual,dsct:dsct});
+
+        objeto_regresar[contador_momentane]={};
+        objeto_regresar[contador_momentane]["codigo"]=tipopromo["idprom"];
+        objeto_regresar[contador_momentane]["descripcion"]=tipopromo["nombre"];
+        objeto_regresar[contador_momentane]["cantidad"]=veces;
+        objeto_regresar[contador_momentane]["montoDescuento"]=corresponde;
+        objeto_regresar[contador_momentane]["monedaDescuento"]="D";
+        objeto_regresar[contador_momentane]["itemdescr"]=nombre_item;
+        tipopromo["descuento"]==1 ? objeto_regresar[contador_momentane]["tipo"]=["descuento"] : objeto_regresar[contador_momentane]["tipo"]=["regalo"];
+        contador_momentane++;
+    }
+
+    if(Object.keys(objeto_regresar).length>0){
+        tipopromo["descuento"]==1 ? objeto_regresar["tipo"]=["descuento"] : objeto_regresar["tipo"]=["regalo"];
+        objeto_regresar["descripcion"]=tipopromo["nombre"];
+        return objeto_regresar;
+    }
+    return no_aplica(participantes,faltante_minimo,"monto");
+}
 function vx_unidad(codigos,cotdetalle,tipopromo,promcabesa,promdetalle){
     let objeto_regresar={};
     let items_correspondientes={};
+    let participantes=0;        ////cuantos productos del carrito estan en la promo
+    let faltante_minimo=null;   ////cuantas unidades le faltan al que esta mas cerca
     // let check_monto_prom=0;
 
     for(let y in promdetalle){
@@ -27,6 +91,11 @@ function vx_unidad(codigos,cotdetalle,tipopromo,promcabesa,promdetalle){
             let check_monto_precio=cotdetalle[promdetalle[y][0]]["preciosinIGV"];
             ////esto solo sera para agregar el nombre del producto al cual se le esta aplicando la promo
             let check_monto_nombre=cotdetalle[promdetalle[y][0]]["descripcion"];
+            participantes++;
+            if(Number(check_monto_prom)>Number(check_monto_item)){
+                const falta=Number(check_monto_prom)-Number(check_monto_item);
+                if(faltante_minimo===null || falta<faltante_minimo) faltante_minimo=falta;
+            }
             if(Number(check_monto_prom)<=Number(check_monto_item)){
             ///aca le estoi agregando al final el monto que le pide como minimo la promo lo usare en el bucle de abajo
         items_correspondientes[promdetalle[y][0]]=[check_monto_item,check_monto_precio,check_monto_prom,check_monto_dsct,check_monto_nombre];
@@ -40,7 +109,14 @@ function vx_unidad(codigos,cotdetalle,tipopromo,promcabesa,promdetalle){
         let tengo_esta_cantidad= items_correspondientes[x][0];
         let cantidad_descuento= items_correspondientes[x][3];
         let division=Math.floor(Number(tengo_esta_cantidad)/Number(unidades_minimas));
-        let corresponde= division*cantidad_descuento;
+        /////antes era: division*cantidad_descuento, que trataba todo como monto fijo
+        /////y ademas devolvia el monto CON IGV. La regla vive ahora en beneficio.js
+        let valorizado_item= items_correspondientes[x][1];
+        /////aqui el umbral esta en unidades, asi que la base del porcentual es el valor
+        /////de las unidades que calificaron: (valor por unidad) x (veces x unidades minimas)
+        let valor_unitario= Number(tengo_esta_cantidad)>0 ? Number(valorizado_item)/Number(tengo_esta_cantidad) : 0;
+        let base_porcentual= valor_unitario*division*Number(unidades_minimas);
+        let corresponde= beneficio.calcular(tipopromo,{veces:division,umbral:unidades_minimas,base:base_porcentual,dsct:cantidad_descuento});
 
         objeto_regresar[contador_momentane]={}
         objeto_regresar[contador_momentane]["codigo"]=tipopromo["idprom"];
@@ -62,7 +138,7 @@ function vx_unidad(codigos,cotdetalle,tipopromo,promcabesa,promdetalle){
         return objeto_regresar;
     }
     else{
-        return "NO SUFICIENTE UNIDAD PARA ESTE ITEM";
+        return no_aplica(participantes,faltante_minimo,"unidades");
     }
 }
 
@@ -109,3 +185,19 @@ function items_aceptados(cotdetalle,promdetalle,check_monto_item,check_monto_pro
 }
 
 module.exports=descuento_correspondiente;
+
+/////Separa los dos casos que antes compartian el mismo mensaje:
+/////  - ningun producto del carrito participa en la promocion
+/////  - participan, pero no llegan al minimo (y ahi se informa cuanto falta)
+function no_aplica(participantes,faltante,unidad){
+    if(participantes===0){
+        return {aplica:false, motivo:"no_participa",
+                mensaje:"ninguno de los productos del carrito participa en esta promocion"};
+    }
+    const f = (faltante===null || !isFinite(faltante)) ? null : Number(faltante.toFixed(2));
+    let mensaje;
+    if(f===null) mensaje="no se alcanza el minimo de la promocion";
+    else if(unidad==="unidades") mensaje="faltan "+f+" unidades para alcanzar la promocion";
+    else mensaje="falta "+f+" de valorizado para alcanzar la promocion";
+    return {aplica:false, motivo:"no_alcanza", faltante:f, unidad:unidad, mensaje:mensaje};
+}

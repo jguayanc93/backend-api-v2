@@ -1,5 +1,5 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
@@ -11,6 +11,8 @@ let {cuota_avance_objetivo_especifico} = require('../../querys/cuota/objetivo_sp
 ///////ESPACIO PARA FUNCIONES GENERALES
 
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
+const {frase} = require('./frases')
+let {avance_detalle} = require('../../querys/cuota/avance_detalle')
 const {error_corrector} = require('../error/err1')
 
 async function cuota_cobertura(req,res,next) {
@@ -28,6 +30,14 @@ async function cuota_cobertura(req,res,next) {
         const decima_call = await obtenerpromesa_conexion();
         const onceava_call = await consulta8(decima_call,primera_call,novena_call);
         const doceava_call = await consulta9(novena_call,onceava_call);
+
+        /////los cuatro añadidos: lo que falta en dinero, el ritmo, lo que restan las
+        /////notas de credito y los clientes con reposicion vencida. Si alguno falla
+        /////viene en null y la pantalla se abre igual.
+        const extra_conexion = await obtenerpromesa_conexion();
+        const extra = await consulta10(extra_conexion, primera_call.codigo, primera_call.identificador,
+                                       doceava_call["meta"], doceava_call["avance"]);
+        Object.assign(doceava_call, extra);
         
         res.status(200).json({"simple":doceava_call});
     }
@@ -56,6 +66,8 @@ function consulta8(conexion,galleta,objformato){ return new Promise((resolve,rej
 
 function consulta9(objformato,avance){ return new Promise((resolve,reject)=>calculo_avance_objetivo_especifico(resolve,reject,objformato,avance)) }
 
+function consulta10(conexion,codven,codusu,meta,avance){ return new Promise((resolve,reject)=>avance_detalle(resolve,reject,conexion,codven,codusu,meta,avance)) }
+
 function calculo_avance_objetivo_especifico(resolve,reject,objformato,avance){
     ////termina de calcular el porcentaje de avance de su objetivo
     let cuota_objspec_fijada=objformato["objspec_cuota"];
@@ -74,13 +86,11 @@ function calculo_porcentaje(resolve,reject,objformato){
 }
 
 function galleta_credencial(resolve,reject,req){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 function galleta_tipo(resolve,reject,req){
@@ -127,7 +137,9 @@ function avance_mensaje(resolve,reject,tiempo){
 
 function estimacion_monto(resolve,reject,tiempos,monto,textodia){
     let objformato={}
-    let mensaje="";
+    /////la frase sale del catalogo de funciones/cuota/frases.js, que rota con el dia
+    /////del mes para que no se repita la misma dos dias seguidos
+
 
     let cuota_fijada=tiempos[3];
     let cuota_avanse=monto;
@@ -136,65 +148,14 @@ function estimacion_monto(resolve,reject,tiempos,monto,textodia){
 
     let recortado = `${porcentaje.toFixed(2)} %`;
 
-    switch (true) {
-        case porcentaje<=5:
-            mensaje="que asi se chambea?";
-            break;
-
-        case porcentaje<=10:
-            mensaje="comensando a calentar";
-            break;
-
-        case porcentaje<=20:
-            mensaje="ya terminaste de vender a los clientes seguros del mes";
-            break;
-
-        case porcentaje<=30:
-            mensaje="ya tienes un tercio";
-            break;
-
-        case porcentaje<=40:
-            mensaje="ponte la camiseta tio";
-            break;
-
-        case porcentaje<=50:
-            mensaje="WEEEEENA mitad desbloqueado";
-            break;
-
-        case porcentaje<=60:
-            mensaje="no esperes que te pasen pedidos, buscalos";
-            break;
-
-        case porcentaje<=70:
-            mensaje="buen monto pero no para comisionar";
-            break;
-
-        case porcentaje<=80:
-            mensaje="un poco mas de esfuerso y llegamos al minimo para comisionar";
-            break;
-
-        case porcentaje<=90:
-            mensaje="apurate goku, ya casi llegas a tu destino";
-            break;
-
-        case porcentaje<=100:
-            mensaje="la PIZZA ya esta en camino apurate";
-            break;
-
-        case porcentaje>100:
-            mensaje="TU SI ERES VENDEDOR NO COMO EL DE TU COSTADO";
-            break;
-    
-        default:
-            mensaje="error de mensajeria";
-            break;
-    }
     //////////////////
     objformato["diastexto"]=textodia;
     objformato["meta"]=tiempos[3];
-    objformato["avance"]=monto;
+    /////SUM() devuelve null cuando el vendedor no facturo nada todavia este mes; la
+    /////pantalla no deberia recibir un null donde espera una cifra
+    objformato["avance"]=Number(monto)||0;
     objformato["porcentaje"]=recortado;
-    objformato["mensaje"]=mensaje;
+    objformato["mensaje"]=frase(porcentaje, new Date().getDate());
     objformato["codfam"]=tiempos[9];
     objformato["objesp"]=tiempos[10];
 

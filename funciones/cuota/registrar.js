@@ -1,5 +1,5 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
@@ -22,7 +22,7 @@ async function cuota_registrar(req,res,next) {
         // const cuarta_call = await obtenerpromesa_conexion();
         // const quinta_call = await consulta3(cuarta_call,tercera_call);
         
-        res.status(200).json({"permitido":cuarta_call});
+        res.status(200).json({"status":"ok","codigo":0,"permitido":true,"cuota":cuarta_call.cuota,"family":cuarta_call.family,"objetivo":cuarta_call.objetivo});
     }
     catch(err){
         error_corrector(res,err);
@@ -67,13 +67,11 @@ function familia_descrifador(resolve,reject,body){
 }
 
 function galleta_credencial(resolve,reject,req){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 function galleta_tipo(resolve,reject,req){

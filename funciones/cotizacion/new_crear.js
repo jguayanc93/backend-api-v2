@@ -1,21 +1,22 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
 let {tipo_cambio} = require('../../querys/cotizacion/tipcambio');
 let {num_correlativo} = require('../../querys/cotizacion/correlativo')
-let {correlativo_update} = require('../../querys/cotizacion/correlativo_update')
 let {coti_atencion} = require('../../querys/cotizacion/atencion')
 let {coti_cabecera} = require('../../querys/cotizacion/crear_cabecera')
 let {coti_detallado} = require('../../querys/cotizacion/crear_detallado')
 let {cotizacion_registrar_vendedor} = require('../../querys/cotizacion//otorgar_cotizacion')
 let {cotizacion_registrar_tcm} = require('../../querys/cotizacion/otorgar_tcm')
 let {recuperar_detallado} = require('../../querys/cotizacion/crear_recuperador')
+const {en_transaccion} = require('../../querys/cotizacion/crear_transaccion')
 ///////ESPACIO PARA FUNCIONES GENERALES
 
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
+const {IGV, CON_IGV} = require('../comunes/constantes')
 
 async function new_creacion(req,res,next) {
     try{
@@ -28,25 +29,32 @@ async function new_creacion(req,res,next) {
         const quinta_call = await obtenerpromesa_conexion();
         const sexta_call = await consulta4(quinta_call);//correlativo actual
         ////POR EL MOMENTTO NO NECESITA ACTUALISAR UNA TABLA DE CORRELATIVO YA QUE NO SE ESTA USANDO PARA NADA
-        // const setima_call = await obtenerpromesa_conexion();
         // const octava_call = await consulta5(setima_call,sexta_call);//actualisar el correlativo en la tabla
 
         const novena_call = await obtenerpromesa_conexion();
         const decima_call = await consulta6(novena_call,req.body["cliente"][0]);//atencion del cliente
-        const undecima_call = await obtenerpromesa_conexion();
-        const doceava_call= await consulta7(undecima_call,cuarta_call,sexta_call,req.body["cliente"],decima_call,segundo_call,req.body["moneda"]);
-        ////CONSTRUIDO CON EXITO EL MST FALTA EL DETALLADO
-        const treceava_call = await obtenerpromesa_conexion();
-        const catorceava_call = await consulta8(treceava_call,req.body,segundo_call[0],cuarta_call,sexta_call);
-        // ////OTORGARLE LA COTI AL VENDEDOR
-        const quinceava_call = await obtenerpromesa_conexion();
-        const diecisesava_call = await consulta9(quinceava_call,primera_call,sexta_call);
-        ///FALTA OTORGARLE LOS TIPOS DE CAMBIOS
-        const diecisietava_call = await obtenerpromesa_conexion();
-        const dieciochava_call = await consulta10(diecisietava_call,primera_call,sexta_call);
+        /////los cuatro pasos que escriben van juntos: cabecera, detalle, vendedor y tipo
+        /////de cambio. Antes eran cuatro conexiones sueltas y un fallo a mitad dejaba la
+        /////cotizacion sin lineas, o con lineas pero sin dueño.
+        const escritura = await obtenerpromesa_conexion();
+        await consultaEnTransaccion(escritura,[
+            (cx)=>consulta7(cx,cuarta_call,sexta_call,req.body["cliente"],decima_call,segundo_call,req.body["moneda"]),
+            (cx)=>consulta8(cx,req.body,segundo_call[0],cuarta_call,sexta_call),
+            (cx)=>consulta9(cx,primera_call,sexta_call),
+            (cx)=>consulta10(cx,primera_call,sexta_call,cuarta_call[3])
+        ]);
 
-        res.status(200).json(JSON.stringify({"success":true}));
-        // res.status(200).json(JSON.stringify({"contenido":catorceava_call}));
+        /////se devuelve el ndocu COMPLETO (con serie) porque el frontend lo necesita para
+        /////mostrarlo y para encadenar /promocion/acoplar, que exige el numero con serie.
+        /////Antes solo salia {"success":true} y ademas doble codificado.
+        const tota = Number(Number(segundo_call[1]).toFixed(2));
+        const toti = Number((tota * IGV).toFixed(2));
+        const totn = Number((tota * CON_IGV).toFixed(2));
+
+        res.status(200).json({"status":"ok","codigo":0,
+                              "documento":sexta_call,
+                              "lineas":Object.keys(segundo_call[0]).length,
+                              "totales":{"tota":tota,"toti":toti,"totn":totn}});
     }
     catch(err){
         error_corrector(res,err);
@@ -57,6 +65,8 @@ function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(re
 
 function recuperador(conexion,productos){ return new Promise((resolve,reject)=>recuperar_detallado(resolve,reject,conexion,productos)) }
 
+function consultaEnTransaccion(conexion,pasos){ return new Promise((resolve,reject)=>en_transaccion(resolve,reject,conexion,pasos)) }
+
 function consulta1(req,next){ return new Promise((resolve,reject)=>galleta_credencial(resolve,reject,req,next)) }
 
 function consulta2(recuperada,tipocambio,dataenviada,moneda){ return new Promise((resolve,reject)=>calcular_moneda(resolve,reject,recuperada,tipocambio,dataenviada,moneda)) }
@@ -65,7 +75,6 @@ function consulta3(conexion){ return new Promise((resolve,reject)=>tipo_cambio(r
 
 function consulta4(conexion){ return new Promise((resolve,reject)=>num_correlativo(resolve,reject,conexion)) }
 
-function consulta5(conexion,correlativo){ return new Promise((resolve,reject)=>correlativo_update(resolve,reject,conexion,correlativo)) }
 
 function consulta6(conexion,codcli){ return new Promise((resolve,reject)=>coti_atencion(resolve,reject,conexion,codcli)) }
 
@@ -81,117 +90,52 @@ function consulta9(conexion,galleta,documento){
     return new Promise((resolve,reject)=>cotizacion_registrar_vendedor(resolve,reject,conexion,galleta,documento))
 };
 
-function consulta10(conexion,galleta,documento){
-    return new Promise((resolve,reject)=>cotizacion_registrar_tcm(resolve,reject,conexion,galleta,documento))
+function consulta10(conexion,galleta,documento,tcmer){
+    return new Promise((resolve,reject)=>cotizacion_registrar_tcm(resolve,reject,conexion,galleta,documento,tcmer))
 }
 
 function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
-function calcular(resolve,reject,dataenviada,tipocambio){
-    let objtotal={};
-    let totalisado=0;
-    for(let indice in dataenviada["productos"]){
-        let descripcion=dataenviada["productos"][indice][0];
-        let cantidad=parseInt(dataenviada["productos"][indice][1]);
-        let costo=parseFloat(dataenviada["productos"][indice][2]).toFixed(2);
-        let preu=parseFloat(dataenviada["productos"][indice][3]);
-        let dsct=parseFloat(dataenviada["productos"][indice][4]);
-        let codf=dataenviada["productos"][indice][5];
-        let marca=dataenviada["productos"][indice][6];
-        let saca_descuento=dsct/100;
-        let saca_tota_por_descuento=(preu*saca_descuento).toFixed(2);
-        let saca_tota_con_descuento=(preu-saca_tota_por_descuento).toFixed(2);
-        let saca_total=saca_tota_con_descuento*cantidad;
-        let total_solo_item=saca_total.toFixed(2);
-        let total_solo_item_igv=(saca_total*0.18).toFixed(2);
-        let total_solo_item_conigv=(saca_total*1.18).toFixed(2);
-        // objtotal[indice]=[total_solo_item,total_solo_item_igv,total_solo_item_conigv];
-        ////creacion del molde para el objeto globlal de productos
-        objtotal[indice]=[codf,marca,descripcion,cantidad,preu,total_solo_item,dsct,total_solo_item_conigv,costo];
-        totalisado+=saca_total;
-    }
-    resolve([objtotal,totalisado])
-}
+/////Arma el detalle y el totalizado de la cabecera a partir de lo que manda el frontend.
+/////
+/////IMPORTANTE: los importes llegan SIEMPRE en dolares. El selector de moneda de la
+/////pantalla es de presentacion, y `moneda` solo se registra en la cabecera (columna mone).
+/////Antes habia una rama if(moneda=="S") que multiplicaba por el tipo de cambio, pero:
+/////  - estaba rota: recorria dataenviada["productos"] cuando dataenviada YA es productos,
+/////    asi que no iteraba nunca y creaba la cotizacion con total 0 y sin detalle;
+/////  - leia indices posicionales, el formato viejo de /create, no los campos con nombre.
+/////Convertir aqui duplicaria el importe de toda cotizacion hecha con soles en pantalla.
 function calcular_moneda(resolve,reject,recuperada,tipocambio,dataenviada,moneda){
     let objtotal={};
     let totalisado=0;
-    if(moneda=='S'){
-        let tip_cambio=tipocambio[0];
 
-        for(let indice in dataenviada["productos"]){
-            let descripcion=dataenviada["productos"][indice][0];
-            let cantidad=parseInt(dataenviada["productos"][indice][1]);
-            let costo=parseFloat(dataenviada["productos"][indice][2]).toFixed(2);
-            let preu=parseFloat(dataenviada["productos"][indice][3]);
-            let dsct=parseFloat(dataenviada["productos"][indice][4]);
-            ///////////////////calcular en soles
-            let costo_sol= Number((costo*tip_cambio).toFixed(2));
-            let preu_sol=Number((preu*tip_cambio).toFixed(2));
-            ////////////
-            let codf=dataenviada["productos"][indice][5];
-            let marca=dataenviada["productos"][indice][6];
-            ////calcular moneda
-            let saca_descuento=dsct/100;
-            //////////
-            let saca_tota_por_descuento=Number((preu_sol*saca_descuento).toFixed(2));
-            let saca_tota_con_descuento=Number((preu_sol-saca_tota_por_descuento).toFixed(2));
-            let saca_total=saca_tota_con_descuento*cantidad;
-            let total_solo_item=saca_total.toFixed(2);
-            let total_solo_item_igv=(saca_total*0.18).toFixed(2);
-            let total_solo_item_conigv=(saca_total*1.18).toFixed(2);
-            // objtotal[indice]=[total_solo_item,total_solo_item_igv,total_solo_item_conigv];
-            ////creacion del molde para el objeto globlal de productos
-            objtotal[indice]=[codf,marca,descripcion,cantidad,preu_sol,total_solo_item,dsct,total_solo_item_conigv,costo_sol];
-            totalisado+=saca_total;
-        }
-    }
-    else{
-        for(let indice in dataenviada){
+    for(let indice in dataenviada){
+        const codigo=dataenviada[indice]["codigo"];
+        if(!Object.keys(recuperada).includes(codigo)) continue;
 
-            if(Object.keys(recuperada).includes(dataenviada[indice]["codigo"])){
-                let descripcion=recuperada[dataenviada[indice]["codigo"]][4];
-                let cantidad=dataenviada[indice]["cantidad"];
-                let costo=recuperada[dataenviada[indice]["codigo"]][6];
-                let preu=dataenviada[indice]["precioUnitario"];
-                let dsct=dataenviada[indice]["descuento"];
-                let codf=recuperada[dataenviada[indice]["codigo"]][1];
-                let marca=recuperada[dataenviada[indice]["codigo"]][2];
-                let total_solo_item=dataenviada[indice]["preciosinIGV"];
-                let total_solo_item_conigv=Number((total_solo_item*1.18).toFixed(2));
-                
-            objtotal[dataenviada[indice]["codigo"]]=[codf,marca,descripcion,cantidad,preu,total_solo_item,dsct,total_solo_item_conigv,costo];
-            ///aun falta corregir el totalisado con igv para la suma general
-            totalisado+=total_solo_item;
-            }
-        // let descripcion=dataenviada["productos"][indice][0];
-        // let cantidad=parseInt(dataenviada["productos"][indice][1]);
-        // let costo=parseFloat(dataenviada["productos"][indice][2]).toFixed(2);
-        // let preu=parseFloat(dataenviada["productos"][indice][3]);
-        // let dsct=parseFloat(dataenviada["productos"][indice][4]);
-        // let codf=dataenviada["productos"][indice][5];
-        // let marca=dataenviada["productos"][indice][6];
-        // let saca_descuento=dsct/100;
-        // let saca_tota_por_descuento=(preu*saca_descuento).toFixed(2);
-        // let saca_tota_con_descuento=(preu-saca_tota_por_descuento).toFixed(2);
-        // let saca_total=saca_tota_con_descuento*cantidad;
-        // let total_solo_item=saca_total.toFixed(2);
-        // let total_solo_item_igv=(saca_total*0.18).toFixed(2);
-        // let total_solo_item_conigv=(saca_total*1.18).toFixed(2);
-        // // objtotal[indice]=[total_solo_item,total_solo_item_igv,total_solo_item_conigv];
-        // ////creacion del molde para el objeto globlal de productos
-        // objtotal[indice]=[codf,marca,descripcion,cantidad,preu,total_solo_item,dsct,total_solo_item_conigv,costo];
-        // totalisado+=saca_total;
-        }
+        /////descripcion, costo, codf y marca salen de la BD, no del cuerpo
+        const descripcion=recuperada[codigo][4];
+        const costo=recuperada[codigo][6];
+        const codf=recuperada[codigo][1];
+        const marca=recuperada[codigo][2];
+
+        const cantidad=dataenviada[indice]["cantidad"];
+        const preu=dataenviada[indice]["precioUnitario"];
+        const dsct=dataenviada[indice]["descuento"];
+        const total_solo_item=dataenviada[indice]["preciosinIGV"];
+        const total_solo_item_conigv=Number((total_solo_item*CON_IGV).toFixed(2));
+
+        objtotal[codigo]=[codf,marca,descripcion,cantidad,preu,total_solo_item,dsct,total_solo_item_conigv,costo];
+        totalisado+=total_solo_item;
     }
-    resolve([objtotal,totalisado])
+
+    resolve([objtotal,totalisado]);
 }
 
 module.exports={new_creacion}

@@ -1,56 +1,64 @@
-require('dotenv').config();
-const jws = require('jws');
-
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
-// let {promocion_id} = require('../../querys/promocion/promocion_id')
-let {coti_contiene_promocion} = require('../../querys/promocion/promocion_en_cotizacion')
 let {coti_detallado} = require('../../querys/promocion/prom_buscar_cabecera')
-// let {prom_buscar_cabecera} = require('../../querys/promocion/prom_buscar_cabecera2')
 let {promocion_id} = require('../../querys/promocion/promocion_id')
 let {prom_buscar_detallado} = require('../../querys/promocion/prom_buscar_detallado')
 ///////ESPACIO PARA FUNCIONES GENERALES
-let v_xitems = require('./xitems')
-let v_xitotalisado = require('./xtotalisados')
+const motor = require('./motor')
+const {desdeDetalleBD} = require('./normalizar')
 let descuento = require('./descuento')
 let bonificacion = require('./bonificacion')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
-//////////SE DEBE CORREGIR TODO
+const {haciaRespuesta} = require('./destino')
+
+/////aplica la promocion sobre el detalle ya guardado de la cotizacion.
+/////la sesion la valida el middleware del router, no cada handler.
 async function prom_adjuntar(req,res,next) {
     try{
-        const primera_call = await obtenerpromesa_conexion();
-        const segunda_call = await consulta1(primera_call,req.body);//coti detallado
-        const tercera_call = await obtenerpromesa_conexion();
-        const cuarta_call = await consulta2(tercera_call,req.body);//promocion cabecera
-        const quinta_call = await consulta3(cuarta_call);//encontrado
-        const sexta_call = await consulta4(cuarta_call);//numero_metrica
-        const setima_call = await consulta5(cuarta_call);//saber_grupo
-        
-        const octava_call = await obtenerpromesa_conexion();
-        const novena_call = await consulta6(octava_call,req.body);///promocion detallado
-        /////usare esta funcion como trampolin para direccionarme a su debido lugar
-        const decima_call = await consulta7(req.body.nprom,segunda_call,cuarta_call,novena_call,quinta_call,sexta_call);
-        // const onceava_call = await obtenerpromesa_conexion();
-        ////usare esta otro trampolin para darle lo merecido segun promo
-        // INTENTARE USAR UNA DIRECCION DIFERENTE POR MIENTRAS
-        if(decima_call.length===0){
-            // onceava_call.close();
-            res.status(401).send("no promo aplicable");
+        const conexion_detalle = await obtenerpromesa_conexion();
+        const detalle_coti = await consulta1(conexion_detalle,req.body);
+
+        const conexion_cabecera = await obtenerpromesa_conexion();
+        const cabecera_promo = await consulta2(conexion_cabecera,req.body);
+
+        /////un solo punto de clasificacion, en vez de buscar_tipo + buscar_metrica + buscar_grupo
+        const promo = motor.clasificar(cabecera_promo);
+        /////se normaliza para tener los codigos y los totales sin indices magicos
+        const cotizacion = desdeDetalleBD(detalle_coti);
+
+        const conexion_promdet = await obtenerpromesa_conexion();
+        const detalle_promo = await consulta6(conexion_promdet,req.body);
+
+        const resultado = motor.evaluar({
+            promo,
+            origen:'bd',
+            nprom: req.body.nprom,
+            cotdetalle: detalle_coti,
+            promcabesa: cabecera_promo,
+            promdetalle: detalle_promo,
+            /////los evaluadores de este lado leen tipopromo[0] y tipometrica sueltos
+            tipopromo: [promo.venta, promo.descuento, promo.otorga],
+            tipometrica: promo.metrica
+        });
+
+        if(!motor.hayResultado(resultado)){
+            return error_corrector(res,"no promo aplicable");
+        }
+
+        /////el eje beneficio decide el paso siguiente: descontar o regalar
+        /////en /mostrar el destino es la respuesta HTTP; en /acoplar es la insercion
+        const destino = haciaRespuesta(res, error_corrector);
+
+        if(motor.esDescuento(promo)){
+            descuento(destino,req.body.nprom,detalle_coti,cabecera_promo,detalle_promo,
+                      [promo.venta,promo.descuento,promo.otorga],promo.metrica,resultado,promo);
         }
         else{
-            const onceava_call = await obtenerpromesa_conexion();
-            if(quinta_call[1]===1){
-                onceava_call.close();
-                // descuento(res,req.body.nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,decima_call);
-                descuento(res,req.body.nprom,segunda_call,cuarta_call,novena_call,quinta_call,sexta_call,decima_call);
-            }
-            else{
-                // bonificacion(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta);
-                bonificacion(res,req.body.nprom,segunda_call,cuarta_call,novena_call,quinta_call,sexta_call,decima_call,onceava_call);
-            }
+            const conexion_bonificacion = await obtenerpromesa_conexion();
+            bonificacion(destino,req.body.nprom,detalle_coti,cabecera_promo,detalle_promo,
+                         [promo.venta,promo.descuento,promo.otorga],promo.metrica,resultado,conexion_bonificacion,promo);
         }
-        // res.status(200).json(decima_call);////aca si va a estar yuca enviar la respuesta
     }
     catch(err){ error_corrector(res,err); }
 }
@@ -59,89 +67,8 @@ function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(re
 
 function consulta1(conexion,body){ return new Promise((resolve,reject)=>coti_detallado(resolve,reject,conexion,body)) }
 
-// function consulta2(conexion,body){ return new Promise((resolve,reject)=>prom_buscar_cabecera(resolve,reject,conexion,body)) }
 function consulta2(conexion,body){ return new Promise((resolve,reject)=>promocion_id(resolve,reject,conexion,body)) }
 
-function consulta3(promocion){ return new Promise((resolve,reject)=>buscar_tipo(resolve,reject,promocion)) }
-
-function consulta4(promocion){ return new Promise((resolve,reject)=>buscar_metrica(resolve,reject,promocion)) }
-
-function consulta5(promocion){ return new Promise((resolve,reject)=>buscar_grupo(resolve,reject,promocion)) }
-
 function consulta6(conexion,body){ return new Promise((resolve,reject)=>prom_buscar_detallado(resolve,reject,conexion,body)) }
-
-function consulta7(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica){ return new Promise((resolve,reject)=>direccionador(resolve,reject,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica)) }
-
-function consulta8(conexion){ return new Promise((resolve,reject)=>direccionador2(resolve,reject,conexion)) }
-
-function direccionador(resolve,reject,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica){
-    let respuesta_devuelta;
-    
-    if(tipopromo[0]==1){
-        respuesta_devuelta=v_xitems(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica);
-    }
-    else{
-        respuesta_devuelta=v_xitotalisado(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica);
-    }
-
-    resolve(respuesta_devuelta);
-}
-
-function direccionador2(resolve,reject){
-    if(respuesta_devuelta.length===0){
-        ////RETORNO DE LA RESPUESTA QUE NO CUMPLIO LA PROMO
-        res.status(401).send("no promo aplicable");
-    }
-    else{
-    ///////////////////
-    if(tipopromo[1]==1){
-        // promo_terminada=descuento(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta[0],respuesta_devuelta[1]);
-        // descuento(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta[0],respuesta_devuelta[1],respuesta_devuelta[2],respuesta_devuelta[3],respuesta_devuelta[4]);
-        descuento(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta);
-    }
-    else{
-        // promo_terminada=bonificacion(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,items_validos2,items_promos2);
-        // bonificacion(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta[0],respuesta_devuelta[1],respuesta_devuelta[2]);
-        bonificacion(res,nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,respuesta_devuelta);
-    }
-    // res.status(200).json(respuesta_devuelta)
-    // res.status(200).json(promo_terminada)
-    }
-}
-
-function buscar_tipo(resolve,reject,respuesta2){
-    ///falta manejar las direcciones a partir de la separacion de promocions
-    const posibilidades={
-    "tipo111":[1,1,1],
-    "tipo113":[1,1,3],///ya esta
-    "tipo131":[1,3,1],///ya esta
-    "tipo133":[1,3,3],
-    "tipo311":[3,1,1],
-    "tipo313":[3,1,3],///ya esta
-    "tipo331":[3,3,1],///ya esta
-    "tipo333":[3,3,3]
-}
-    let buscar_tipo=[respuesta2[3],respuesta2[4],respuesta2[5]];    
-    let encontrado="no found";
-
-    for(let i in posibilidades){
-        if(posibilidades[i].toString()==buscar_tipo.toString()) encontrado=posibilidades[i];
-    }
-    // return encontrado;
-    resolve(encontrado)
-
-}
-/////SOLO EXISTEN 2 METRICAS,POR MONTO Y POR UNIDADES,CON ESTO VAS A MONTO DE DINERO O CANTIDAD DE UNIDADES
-function buscar_metrica(resolve,reject,respuesta2){
-    let tipo_metrica=respuesta2[6];
-    resolve(tipo_metrica)
-}
-/////CLAVE PARA DETERMINAR SI ESTA PROMOCION ESTA AGRUPADA O NO, DE ESTARLO TOMAR OTRA RUTA PARA SU APLICACION
-function buscar_grupo(resolve,reject,respuesta2){
-    let tipo_grupo=respuesta2[9];
-    resolve(tipo_grupo)
-}
-
-
 
 module.exports={prom_adjuntar}

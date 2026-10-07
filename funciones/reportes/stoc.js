@@ -1,5 +1,5 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 const XLSX = require('xlsx');
 
 const {conn} = require('../../conexion/cnn')
@@ -36,13 +36,11 @@ function consulta3(conexion,body){ return new Promise((resolve,reject)=>reporte_
 function consulta4(reporte){ return new Promise((resolve,reject)=>relacionar_marcas(resolve,reject,reporte)) }
 
 function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 function relacionar_marcas(resolve,reject,respuesta){

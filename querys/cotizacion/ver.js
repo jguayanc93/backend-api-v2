@@ -1,13 +1,25 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
 
-let coti_ver = (resolve,reject,conexion,req)=>{
+/////El detalle de una cotizacion del vendedor que la pide.
+/////
+/////El filtro por codven_usu va dentro de esta misma consulta y no en una previa: asi no
+/////cuesta una segunda ida a la base, y no hay forma de que la cotizacion se entregue
+/////antes de comprobar de quien es. Sin ese filtro cualquier usuario autenticado podia
+/////leer la cotizacion de otro tecleando su numero.
+/////
+/////flag se compara como texto porque las eliminadas tienen flag='*' y convertirlo a
+/////numero revienta. Se aceptan las facturadas y pedidos (flag='1'): reimprimir el PDF de
+/////una cotizacion ya facturada es un caso normal. Solo se excluyen las eliminadas.
+let coti_ver = (resolve,reject,conexion,req,galleta)=>{
 
     let numero= req.body.ncoti;
-    let ncoti="009-00"+numero;
+    let ncoti= resolverNdocu(numero);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
+    let codven= galleta.codigo;
 
     // let sq_sql="select b.tipocl,a.fecha,a.cdocu,a.ndocu,a.codcli,a.tcam,a.mone,a.moneitm,a.aigv,'item',a.codi,a.codf,a.marc,a.umed,a.descr,a.cant,a.preu,a.tota,a.dsct,a.totn,a.codalm,a.cost,a.msto from dtl01cot a inner join mst01cli b on (b.codcli=a.codcli) inner join mst01cot c on (c.ndocu=a.ndocu) where a.ndocu=@coti AND c.flag='0' AND LEFT(a.codi,4)<>'0303' AND LEFT(a.descr,11)<>'GRATIS/PROM' order by a.item";
-    let sq_sql="select b.tipocl,a.fecha,a.cdocu,a.ndocu,a.codcli,a.tcam,a.mone,a.moneitm,a.aigv,'item',a.codi,a.codf,a.marc,a.umed,a.descr,a.cant,a.preu,a.tota,a.dsct,a.totn,a.codalm,a.cost,a.msto from dtl01cot a inner join mst01cli b on (b.codcli=a.codcli) inner join mst01cot c on (c.ndocu=a.ndocu) where a.ndocu=@coti AND c.flag='0' order by a.item";
+    let sq_sql="select b.tipocl,a.fecha,a.cdocu,a.ndocu,a.codcli,a.tcam,a.mone,a.moneitm,a.aigv,'item',a.codi,a.codf,a.marc,a.umed,a.descr,a.cant,a.preu,a.tota,a.dsct,a.totn,a.codalm,a.cost,a.msto,c.nomcli,b.dircli,c.atte from dtl01cot a inner join mst01cli b on (b.codcli=a.codcli) inner join mst01cot c on (c.ndocu=a.ndocu) where a.ndocu=@coti AND ISNULL(c.flag,'')<>'*' AND c.codven_usu=@codven order by a.item";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();
@@ -16,9 +28,11 @@ let coti_ver = (resolve,reject,conexion,req)=>{
         else{
             conexion.close();
 
-            ////////lo mandara aqui porqe aunque si exista no esta registrado en la intranet y debe registrarse
+            /////sin filas puede ser que no exista, que este eliminada o que sea de otro
+            /////vendedor; se responden igual a proposito, para no confirmar que un numero
+            /////ajeno existe
             if(rows.length==0){
-                reject("cotizacion no registrada");
+                reject("coti desconocida");
             }
             else{
                 let respuesta=[];
@@ -39,6 +53,7 @@ let coti_ver = (resolve,reject,conexion,req)=>{
         }
     })
     consulta.addParameter('coti',TYPES.VarChar,ncoti);
+    consulta.addParameter('codven',TYPES.VarChar,codven);
     conexion.execSql(consulta);
 }
 

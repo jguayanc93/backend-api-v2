@@ -1,12 +1,19 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
 
-let promo_vertodo = (resolve,reject,conexion,cuerpo)=>{
+/////El detalle de la cotizacion, para saber que promociones le aplican.
+/////
+/////Antes leia dtl01cot por numero y nada mas: cualquiera con sesion podia preguntar por
+/////la cotizacion de otro vendedor. Ahora entra por la cabecera, que es donde esta el dueño.
+let promo_vertodo = (resolve,reject,conexion,cuerpo,galleta)=>{
+
+    let codven = galleta ? galleta.codigo : null;
 
     let numero= cuerpo.ncoti;
-    let ncoti="009-00"+numero;
+    let ncoti= resolverNdocu(numero);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
 
-    let sq_sql="select CONVERT(varchar,fecha,120) as fecha,cdocu,ndocu,codcli,tcam,mone,moneitm,aigv,item,codi,codf,marc,umed,descr,cant,preu,tota,dsct,totn,codalm,cost,msto,ucon,ucom,obse from dtl01cot where ndocu=@coti order by item";
+    let sq_sql="select CONVERT(varchar,a.fecha,120) as fecha,a.cdocu,a.ndocu,a.codcli,a.tcam,a.mone,a.moneitm,a.aigv,a.item,a.codi,a.codf,a.marc,a.umed,a.descr,a.cant,a.preu,a.tota,a.dsct,a.totn,a.codalm,a.cost,a.msto,a.ucon,a.ucom,a.obse from dtl01cot a inner join mst01cot c on (c.ndocu=a.ndocu) where a.ndocu=@coti and c.codven_usu=@codven order by a.item";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();
@@ -37,6 +44,7 @@ let promo_vertodo = (resolve,reject,conexion,cuerpo)=>{
         }
     })
     consulta.addParameter('coti',TYPES.VarChar,ncoti);
+    consulta.addParameter('codven',TYPES.VarChar,codven);
     conexion.execSql(consulta);
 }
 

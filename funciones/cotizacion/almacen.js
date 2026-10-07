@@ -1,11 +1,8 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
-let {limpiar_detallado} = require('../../querys/cotizacion/limpiar_detallado')
-let {cabecera_corregido} = require('../../querys/cotizacion/corregir_cabecera')
-let {detallado_corregido} = require('../../querys/cotizacion/corregir_detallado')
 let {coti_validar_vendedor} = require('../../querys/cotizacion/mostrar_vendedor_registro')
 let {almacen_corregido} = require('../../querys/cotizacion/corregir_almacen')
 ///////ESPACIO PARA FUNCIONES GENERALES
@@ -38,13 +35,11 @@ function consulta3(conexion,body){ return new Promise((resolve,reject)=>almacen_
 
 
 function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 function calcular(resolve,reject,dataenviada){

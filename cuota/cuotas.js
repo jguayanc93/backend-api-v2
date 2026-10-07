@@ -1,4 +1,5 @@
 require('dotenv').config();
+const {auditar} = require('../funciones/comunes/auditoria')
 
 const express = require('express');
 // const multer= require('multer')
@@ -10,7 +11,6 @@ const {objevacio} = require('../funciones/objvacio')
 const {cuota_permisos} = require('../funciones/cuota/permisos')
 const {cuota_revisar} = require('../funciones/cuota/revisar')
 const {cuota_marca_revisor_rapido} = require('../funciones/cuota/revisar_marca')
-const {cuota_marca_revisor_rapido2} = require('../funciones/cuota/revisar_marca2')
 const {cuota_registrar} = require('../funciones/cuota/registrar')
 const {cuota_registrar_marca} = require('../funciones/cuota/registrar_marca')
 const {cuota_direccionador} = require('../funciones/cuota/mostrar')
@@ -22,7 +22,6 @@ const {cuota_simple} = require('../funciones/cuota/simple')
 const {cuota_multiple} = require('../funciones/cuota/multiple')
 
 const {cuota_marca_dinamica} = require('../funciones/cuota/marca')
-const {cuota_item_desechable} = require('../funciones/cuota/item_rematar')
 
 router.use(express.json());
 
@@ -36,9 +35,8 @@ router.get('/multiple',cuota_multiple)
 /////estas rutas son para sus respectivos accesos segun pueda o no
 router.get('/revisar',cuota_revisar)
 router.post('/marcarevisar',cuota_marca_revisor_rapido)
-router.post('/marcawach',cuota_marca_revisor_rapido2)
-router.post('/update',cuota_registrar)
-router.post('/marcaupdate',cuota_registrar_marca)
+router.post('/update',auditar('cuota','registrar'),cuota_registrar)
+router.post('/marcaupdate',auditar('cuota','registrar marca'),cuota_registrar_marca)
 router.get('/mostrar',cuota_direccionador)
 router.post('/marcamostrar',cuota_marca_dinamica)
 /////mandalos a sus respectivas rutas
@@ -46,6 +44,5 @@ router.get('/cobertura',cuota_cobertura)
 router.get('/cartera',cuota_cartera)
 router.get('/especialista',cuota_especialista)
 // router.post('/jefatura')
-router.post('/desechar',cuota_item_desechable)
 
 module.exports=router

@@ -1,281 +1,94 @@
+/////Evaluador del lado BD para promociones POR TOTAL DE VENTA: el umbral se mide sobre el
+/////CONJUNTO de productos de la promocion presentes en la cotizacion, y se otorga un solo
+/////beneficio para todo el conjunto.
+/////
+/////La metrica decide que se acumula:
+/////   UNIDADES   -> la cantidad de cada linea (dtl01cot.cant)
+/////   VALORIZADO -> el monto sin IGV de cada linea (dtl01cot.tota)
+/////
+/////Reescrito para que coincida con el evaluador del carrito (porTotalVenta.js). La version
+/////anterior calculaba las veces por otro camino y daba numeros distintos: con la promo
+/////13235 (umbral 236, conjunto 21 774.02) el carrito daba 92 y este lado daba 5.
+const {COT, PROMDET, METRICA, MARCA_BONIFICACION} = require('../comunes/constantes');
 
-let descuento_correspondiente=(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica)=>{
-    //////FALTA UN FOR PARA SABER EN Q NUMERO DE ITEM SE ENCUENTRA
-    let numero_item=1;
-    numero_item=Object.keys(cotdetalle).length;
-    let cantidad_correspondiente_obtenida;
-    
-    if(tipometrica==1){
-        // cantidad_correspondiente_obtenida=m_valorizado_conjunto(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item);
-        cantidad_correspondiente_obtenida=recorrido_conjunto_unidades_valorizados(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item);
-    }
-    else{
-        // cantidad_correspondiente_obtenida=m_unidades_conjunto(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item);
-        cantidad_correspondiente_obtenida=recorrido_conjunto_unidades_valorizados2(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item);
-    }
-    return cantidad_correspondiente_obtenida;
-}
+let descuento_correspondiente = (nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica)=>{
+    const numero_item = Object.keys(cotdetalle).length;
+    const campo = Number(tipometrica) === METRICA.VALORIZADO ? COT.TOTA : COT.CANT;
+    return recorrer(cotdetalle, promdetalle, numero_item, campo);
+};
 
-////////PARA UNIFICAR EN UNA SOLA FUNCION LA SEPARACION DE UNIDADES Y CONJUNTO
-function recorrido_conjunto_unidades_valorizados(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item){
-    ///////////SOLO PARA LOS TOTALISADOS DE LA CABESERA
+function recorrer(cotdetalle, promdetalle, numero_item, campo){
+    /////1) definicion de la promocion. El umbral es unico por promocion (verificado en BD
+    /////   sobre las 9 de total venta activas), asi que se toma del primer renglon.
+    const porCodi = {};
+    let umbral = 0;
+    let primerRenglon = null;
+    for(const y in promdetalle){
+        const codi = promdetalle[y][PROMDET.CODI];
+        porCodi[codi] = promdetalle[y];
+        if(primerRenglon === null){
+            primerRenglon = promdetalle[y];
+            umbral = Number(promdetalle[y][PROMDET.MONTO]);
+        }
+    }
+
+    /////2) acumular el aporte del conjunto y quedarse con los productos que participan
+    let acumulado = 0;
+    let cabesatota = 0;
+    let cabesatotn = 0;
     let numero_documento;
-    let cabesatota=0;
-    let cabesatotn=0;
-    ////////////////////////////PARA ACUMULAR LOS ITEMS
-    let n_item=numero_item+1;
-    let items_validos=[];
-    let items_validos2={};
-    let items_promos2=[];
+    let primeraLinea = null;
+    const items_validos2 = {};
 
-    for(let x in cotdetalle){
-        ///capturando todos los montos del detallado
-        numero_documento=cotdetalle[x][2]////numero de cotizacion
-        cabesatota+=parseFloat(cotdetalle[x][16]);///totalisado sin igv
-        cabesatotn+=parseFloat(cotdetalle[x][18]);///totalisado con igv
+    for(const x in cotdetalle){
+        const linea = cotdetalle[x];
+        numero_documento = linea[COT.NDOCU];
+        cabesatota += parseFloat(linea[COT.TOTA]);
+        cabesatotn += parseFloat(linea[COT.TOTN]);
 
-        for(let y in promdetalle){
-            ////falta el metodo para mandarlo a conjunto esto solo funciona por unitario
-            if(promdetalle[y][0]==cotdetalle[x][9]){///////HASTA AQUI SON IGUALES LUEGO TIENES QUE SEPARARLOS
+        const codi = linea[COT.CODI];
+        if(!porCodi[codi]) continue;
 
-                let check_monto_prom=promdetalle[y][1];////MONTO MINIMO DE PROMOCION
-                let check_monto_item=cotdetalle[x][14];///MONTO QUE TIENE LA COTIZACION
-                let diferenciar_bonificacion=cotdetalle[x][13].substring(0,11);
+        /////una linea que ya es regalo de promocion no vuelve a entrar al calculo
+        const descr = String(linea[COT.DESCR] == null ? '' : linea[COT.DESCR]);
+        if(descr.substring(0, MARCA_BONIFICACION.length) === MARCA_BONIFICACION) continue;
 
-                if(diferenciar_bonificacion!="GRATIS/PROM"){////A PARTIR DE AQUI COMIENSA LA DIFERENCIA
-
-                    /////tipometrica=1 valorizado ---- tipometrica2 unidades -- ambos son de conjunto
-                    if(tipometrica===1){
-                        items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                        items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][9],cotdetalle[x][18]]);
-                        items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                    }
-                    else if(tipometrica===2){
-                        if(check_monto_item>=check_monto_prom){
-
-                            items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                            items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][13],cotdetalle[x][14]]);
-            //////variable construida para separar q descuento le toca en especifico con el item identicado en el detallado de la prom
-                            items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                        }
-                    }
-                }
-
-            }
-        }
+        acumulado += Number(linea[campo]);
+        items_validos2[codi] = porCodi[codi];
+        if(primeraLinea === null) primeraLinea = linea;
     }
 
-    ////trabajando con el resultado
-    let retorno_conjunto;
-    if(items_validos.length===0) return items_validos;
-    else{
-        ////AQUI DE NUEVO DIFERENCIAMOS EL ENVIO A SUS RESPECTIVAS SUMAS Y CALCULOS DE RESULTADOS
-        if(tipometrica===1){
-            retorno_conjunto=suma_cantidades(items_validos,items_promos2,n_item,promcabesa);
-            return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-        }
-        else{
-            retorno_conjunto=suma_cantidades2(items_validos,items_promos2,n_item);
-            return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-        }
+    /////3) no aplica: se informa el motivo y cuanto falta, igual que el lado carrito
+    if(primeraLinea === null){
+        return {aplica:false, motivo:"no_participa",
+                mensaje:"ninguno de los productos de la cotizacion participa en esta promocion"};
     }
-}
-function recorrido_conjunto_unidades_valorizados2(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item){
-    ///////////SOLO PARA LOS TOTALISADOS DE LA CABESERA
-    let numero_documento;
-    let cabesatota=0;
-    let cabesatotn=0;
-    ////////////////////////////PARA ACUMULAR LOS ITEMS
-    let n_item=numero_item+1;
-    let items_validos=[];
-    let items_validos2={};
-    let items_promos2=[];
-    ///////////solo temporal para acumular los codis
-    let codis_para_revisar=[];
-    let cantidad=50;
-    let cantidad_sumatoria=0;
-    let identificar_codi_promocion={};///esta variable es para reemplazar a items_promos2
-    for(let x in promdetalle){
-        codis_para_revisar.push(promdetalle[x][0]);
-        cantidad=promdetalle[x][1];
-        identificar_codi_promocion[promdetalle[x][0]]=[promdetalle[x][0],promdetalle[x][1],promdetalle[x][2],promdetalle[x][3],promdetalle[x][4],promdetalle[x][5],promdetalle[x][6],promdetalle[x][7]];
-    }
-    for(let x in cotdetalle){
-        if(codis_para_revisar.includes(cotdetalle[x][9])){
-            cantidad_sumatoria=cantidad_sumatoria+cotdetalle[x][14];
-        }
+    if(!(umbral > 0) || acumulado < umbral){
+        const falta = umbral > 0 ? Number((umbral - acumulado).toFixed(2)) : null;
+        const unidad = campo === COT.TOTA ? "monto" : "unidades";
+        return {aplica:false, motivo:"no_alcanza", faltante:falta, unidad:unidad,
+                mensaje: falta === null ? "la promocion no tiene umbral valido"
+                       : (unidad === "unidades"
+                          ? ("faltan "+falta+" unidades en el conjunto para alcanzar la promocion")
+                          : ("falta "+falta+" de valorizado en el conjunto para alcanzar la promocion"))};
     }
 
-    for(let x in cotdetalle){
-        ///capturando todos los montos del detallado
-        numero_documento=cotdetalle[x][2]////numero de cotizacion
-        cabesatota+=parseFloat(cotdetalle[x][16]);///totalisado sin igv
-        cabesatotn+=parseFloat(cotdetalle[x][18]);///totalisado con igv
+    const veces = Math.floor(acumulado / umbral);
 
-        if(codis_para_revisar.includes(cotdetalle[x][9])){
-            let check_monto_prom=cantidad;////MONTO MINIMO DE PROMOCION
-            let check_monto_item=cantidad_sumatoria;///MONTO QUE TIENE LA COTIZACION
-            let diferenciar_bonificacion=cotdetalle[x][13].substring(0,11);
-            if(diferenciar_bonificacion!="GRATIS/PROM"){////A PARTIR DE AQUI COMIENSA LA DIFERENCIA
-                /////tipometrica=1 valorizado ---- tipometrica2 unidades -- ambos son de conjunto
-                if(tipometrica===1){
-                    items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                    items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][9],cotdetalle[x][18]]);
-                    items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                }
-                else if(tipometrica===2){
-                    if(check_monto_item>=check_monto_prom){
-                        // items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                        items_validos2[cotdetalle[x][9]]=identificar_codi_promocion[cotdetalle[x][9]];
-                        items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][13],cotdetalle[x][14]]);
-                        //////variable construida para separar q descuento le toca en especifico con el item identicado en el detallado de la prom
-                        // items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                        items_promos2.push(identificar_codi_promocion[cotdetalle[x][9]]);
-                    }
-                }
-            }
-        }
-    }
+    /////4) una sola entrada para todo el conjunto.
+    /////   La forma la consumen descuento.js y bonificacion.js por posicion:
+    /////   [fecha, cdocu, ndocu, codcli, tcam, descripcion, numero de item, veces]
+    const retorno_conjunto = [
+        primeraLinea[COT.FECHA], primeraLinea[COT.CDOCU], primeraLinea[COT.NDOCU],
+        primeraLinea[COT.CODCLI], primeraLinea[COT.TCAM], "item nombre",
+        numero_item + 1, veces
+    ];
 
-    ////trabajando con el resultado
-    let retorno_conjunto;
-    if(items_validos.length===0) return items_validos;
-    else{
-        ////AQUI DE NUEVO DIFERENCIAMOS EL ENVIO A SUS RESPECTIVAS SUMAS Y CALCULOS DE RESULTADOS
-        if(tipometrica===1){
-            retorno_conjunto=suma_cantidades(items_validos,items_promos2,n_item,promcabesa);
-            return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-        }
-        else{
-            retorno_conjunto=suma_cantidades2(items_validos,items_promos2,n_item);
-            // console.log("retorno conjunto",retorno_conjunto)
-            return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-        }
-    }
+    /////items_promos2 se indexa por [0] aguas abajo para leer umbral y dsct
+    const items_promos2 = Object.keys(items_validos2).map(k => items_validos2[k]);
+    if(items_promos2.length === 0 && primerRenglon) items_promos2.push(primerRenglon);
+
+    return [retorno_conjunto, items_validos2, items_promos2, numero_documento, cabesatota, cabesatotn];
 }
 
-
-///////PARA VALORIZADOS EN CONJUNTO
-function m_valorizado_conjunto(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item){
-    ///////////SOLO PARA LOS TOTALISADOS DE LA CABESERA
-    let numero_documento;
-    let cabesatota=0;
-    let cabesatotn=0;
-    ////////////////////////////////
-    let n_item=numero_item+1;
-    let items_validos=[];
-    let items_validos2={};
-    let items_promos2=[];
-    for(let x in cotdetalle){
-        numero_documento=cotdetalle[x][2];
-        cabesatota+=parseFloat(cotdetalle[x][16]);
-        cabesatotn+=parseFloat(cotdetalle[x][18]);
-        for(let y in promdetalle){
-            if(promdetalle[y][0]==cotdetalle[x][9]){
-                let diferenciar_bonificacion=cotdetalle[x][13].substring(0,11);
-                if(diferenciar_bonificacion!="GRATIS/PROM"){
-                    items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                    items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][9],cotdetalle[x][18]]);
-                    items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                }
-            }
-        }
-    }
-    let retorno_conjunto=suma_cantidades(items_validos,items_promos2,n_item,promcabesa);
-    console.log("retorno revisar cantidades")
-    console.log(retorno_conjunto)
-    return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-}
-function suma_cantidades(items_validos,items_promos2,n_item,promcabesa){
-    ///recontruir esto para calcular segun el monto no las unidades
-    let contador=0;
-    let unidades_minimas=0;
-    for(let item in items_validos) contador+=items_validos[item][6];
-    for(let iprom in items_promos2) unidades_minimas=items_promos2[iprom][1];
-    ///////REVIVIR EN CASO DE SER NECESITADO EMERGENCIA
-    console.log("aqui esta el primer problema")
-    console.log(contador)
-    console.log("aqui esta el segundo problema")
-    console.log(unidades_minimas)
-    let division=contador/unidades_minimas;
-    console.log("aqui esta el problema")
-    console.log(division)
-    let cantidad_promocion=Math.floor(division);
-    console.log("aqui esta la cantidad a otorgar")
-    console.log(cantidad_promocion);
-    ///////APLICANDO LA DISPONIBILIDAD MAXIMA DE UNIDADES POR PROMOCION
-    console.log("ESTE VALOR DEBE SER TESTEADO ANTES DE COMPARARLO PORQE ES PARA EL MAXIMO DE UNIDADES")
-    console.log(promcabesa[7]);
-    if(promcabesa[7]!=0){
-        if(promcabesa[7]<=cantidad_promocion){
-            console.log("aqui1")
-            return [items_validos[0][0],items_validos[0][1],items_validos[0][2],items_validos[0][3],items_validos[0][4],"item nombre",n_item,promcabesa[7]];
-        }
-        // se esta ejecutando este
-        else{return [items_validos[0][0],items_validos[0][1],items_validos[0][2],items_validos[0][3],items_validos[0][4],"item nombre",n_item,cantidad_promocion];}
-    }
-    else{
-        return [items_validos[0][0],items_validos[0][1],items_validos[0][2],items_validos[0][3],items_validos[0][4],"item nombre",n_item,cantidad_promocion];
-    }
-}
-
-//////PARA UNIDADES EN CONJUNTO
-function m_unidades_conjunto(nprom,cotdetalle,promcabesa,promdetalle,tipopromo,tipometrica,numero_item){
-    ///////////SOLO PARA LOS TOTALISADOS DE LA CABESERA
-    let numero_documento;
-    let cabesatota=0;
-    let cabesatotn=0;
-    ////////////////////////////////
-    let n_item=numero_item+1;
-    let items_validos=[];
-    let items_validos2={};
-    let items_promos2=[];
-    // let promo_terminada
-    console.log("items en vacios")
-    console.log(cotdetalle)
-
-    for(let x in cotdetalle){
-        ///capturando todos los montos del detallado
-        numero_documento=cotdetalle[x][2]
-        cabesatota+=parseFloat(cotdetalle[x][16]);
-        cabesatotn+=parseFloat(cotdetalle[x][18]);
-
-        for(let y in promdetalle){
-            if(promdetalle[y][0]==cotdetalle[x][9]){
-                let check_monto_prom=promdetalle[y][1];////MONTO MINIMO DE PROMOCION
-                let check_monto_item=cotdetalle[x][14];///MONTO QUE TIENE LA COTIZACION
-                let diferenciar_bonificacion=cotdetalle[x][13].substring(0,11);
-                ////VERIFICANDO QUE EL MONTO SEA EL MINIMO REQUERIDO Y RETIRANDO ITEMS QUE SEAN REGALOS
-                if(check_monto_item>=check_monto_prom && diferenciar_bonificacion!="GRATIS/PROM"){
-                    
-                    items_validos2[cotdetalle[x][9]]=[promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]];
-                    items_validos.push([cotdetalle[x][0],cotdetalle[x][1],cotdetalle[x][2],cotdetalle[x][3],cotdetalle[x][4],cotdetalle[x][13],cotdetalle[x][14]]);
-///////variable construida para separar q descuento le toca en especifico con el item identicado en el detallado de la prom
-                    items_promos2.push([promdetalle[y][0],promdetalle[y][1],promdetalle[y][2],promdetalle[y][3],promdetalle[y][4],promdetalle[y][5],promdetalle[y][6],promdetalle[y][7]]);
-                }
-            }
-        }
-    }
-    // let retorno_conjunto=suma_cantidades(items_validos,items_promos2,n_item);
-    let retorno_conjunto;
-    if(items_validos.length===0) return items_validos;
-    else{
-        retorno_conjunto=suma_cantidades2(items_validos,items_promos2,n_item);
-        return [retorno_conjunto,items_validos2,items_promos2,numero_documento,cabesatota,cabesatotn];
-    }
-}
-function suma_cantidades2(items_validos,items_promos2,n_item){
-    // console.log("aqui estan items_validos",items_validos)
-    // console.log("aqui estan items_promos",items_promos2)
-    let contador=0;
-    let unidades_minimas=0;
-    for(let item in items_validos) contador+=items_validos[item][6];
-    for(let iprom in items_promos2) unidades_minimas=items_promos2[iprom][1];
-    let division=contador/unidades_minimas;
-    ////no da las cantidades estimadas
-    let cantidad_promocion=Math.floor(division);
-    return [items_validos[0][0],items_validos[0][1],items_validos[0][2],items_validos[0][3],items_validos[0][4],"item nombre",n_item,cantidad_promocion];
-}
-
-
-module.exports=descuento_correspondiente;
+module.exports = descuento_correspondiente;

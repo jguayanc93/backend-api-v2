@@ -1,5 +1,4 @@
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
@@ -14,7 +13,6 @@ const {error_corrector} = require('../error/err1')
 
 async function prom_analisar(req,res,next) {
     try{
-        const primera_call = await consulta1(req,next);//galletas
         const segunda_call = await obtenerpromesa_conexion();
         const tercera_call = await consulta2(segunda_call,req.body);
         const cuarta_call = await obtenerpromesa_conexion();
@@ -22,7 +20,7 @@ async function prom_analisar(req,res,next) {
         if(quinta_call==='next'){
             next();
         }
-        else{ res.status(200).send("promo ya aplicada"); }
+        else{ res.status(200).json({"status":"promo ya aplicada","codigo":0,"msg":"la promocion ya esta aplicada en esta cotizacion"}); }
         // res.status(200).json(quinta_call);
     }
     catch(err){
@@ -32,21 +30,11 @@ async function prom_analisar(req,res,next) {
 
 function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(resolve,reject)) }
 
-function consulta1(req,next){ return new Promise((resolve,reject)=>galleta_credencial(resolve,reject,req,next)) }
 
 function consulta2(conexion,cuerpo){ return new Promise((resolve,reject)=>promocion_id(resolve,reject,conexion,cuerpo)) }
 
 function consulta3(conexion,cuerpo,promocion){ return new Promise((resolve,reject)=>coti_contiene_promocion(resolve,reject,conexion,cuerpo,promocion)) }
 
-function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}    
-}
 
 
 

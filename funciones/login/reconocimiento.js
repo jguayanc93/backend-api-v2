@@ -8,6 +8,8 @@ let {comprobacion_logeo} = require('../../querys/login/reconocimiento');
 let {jwtgenerator} = require('../../login/token')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
+/////quien entro, cuando y desde que dispositivo
+const {registrarSesion} = require('../comunes/auditoria')
 
 async function logeo(req,res,next) {
     try{
@@ -24,11 +26,15 @@ async function logeo(req,res,next) {
             secure:true,
             signed:true
         })
+        /////la fila del procedimiento viene por posicion, no con la forma del token
+        registrarSesion(req,"entrada",{usuario:{identificador:segunda_call[0], nombre:segunda_call[1],
+                                                codigo:segunda_call[2], id_grupo:segunda_call[5]}});
         res.redirect('/v1/login/identificador');
         // res.redirect('identificador');////resolver esto despues
         // res.status(200).json(JSON.stringify(segunda_call));
     }
-    catch(err){        
+    catch(err){
+        registrarSesion(req,"rechazo",{motivo: typeof err==="string" ? err : "error"});
         error_corrector(res,err);
         /////el error debes manejarlo con una funcion especial para diferenciar las trabas
         // res.status(400).json({

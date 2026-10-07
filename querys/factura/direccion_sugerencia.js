@@ -1,46 +1,27 @@
-require('dotenv').config();
-const {Request,TYPES} = require('../../conexion/cadena')
+const {listar, ES_SU_CLIENTE, TYPES} = require('./opciones');
 
-let factura_sugerencia_direccion = (resolve,reject,conexion,body)=>{
-    
-    // let caracter = "%"+body.sugerencia+"%";
-    let cli = body.cli;
+/////Las direcciones de entrega de un cliente. Sin tope y sin filtro: una direccion no se
+/////adivina, se reconoce, asi que la pantalla las enseña todas y filtra en local. El
+/////cliente con 195 es raro y no deberia empeorar los miles normales.
+/////
+/////Misma comprobacion que atencion: solo si el vendedor tiene facturas con ese cliente.
+let factura_sugerencia_direccion = (resolve,reject,conexion,galleta,body)=>{
+    const codven = galleta ? galleta.codigo : null;
+    const cli = String((body && body.cli) || '').trim();
 
-    // let sq_sql="select dirent from mst01cli where codcli=@cliente1 union select dirent from Dtl_Cliente_Alias where codcli=@cliente2 and dirent<>'' and dirent like @sugerencia";
-    let sq_sql="select dirent from mst01cli where codcli=@cliente1 union select dirent from Dtl_Cliente_Alias where codcli=@cliente2 and dirent<>''";
-    let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
-        if(err){
-            conexion.close();
-            reject("error query");
-        }
-        else{
-            conexion.close();
-            
-            if(rows.length==0){
-                reject("factura no asignada");
-            }
-            else{
-                let respuesta=[];
-                let respuesta2={};
-                let contador=0;
-                rows.forEach(fila=>{
-                    let tmp={};
-                    fila.map(data=>{
-                        if(contador>=fila.length) contador=0;
-                        typeof data.value=='string' ? tmp[contador]=data.value.trim() : tmp[contador]=data.value;
-                        contador++;
-                    })
-                    respuesta.push(tmp);
-                });
-                Object.assign(respuesta2,respuesta);
-                resolve(respuesta2);
-            }
-        }
-    })
-    consulta.addParameter('cliente1',TYPES.VarChar,cli);
-    consulta.addParameter('cliente2',TYPES.VarChar,cli);
-    // consulta.addParameter('sugerencia',TYPES.VarChar,caracter);
-    conexion.execSql(consulta);
+    if(!codven){ conexion.close(); return reject("falsa galleta"); }
+    if(!cli){ conexion.close(); return reject("cliente ajeno"); }
+
+    listar(conexion,
+        "select dirent,COUNT(*) OVER () as total from ("+
+        "   select dirent from mst01cli where codcli=@cliente and LTRIM(RTRIM(ISNULL(dirent,'')))<>''"+
+        "   union"+
+        "   select dirent from Dtl_Cliente_Alias where codcli=@cliente and LTRIM(RTRIM(ISNULL(dirent,'')))<>''"+
+        ") d where exists(select 1 from mst01fac f where f.codcli=@cliente and f.codven_usu=@codven"+
+        "                 and f.cdocu in ('01','03') and f.flag<>'*')",
+        [{nombre:'cliente',tipo:TYPES.VarChar,valor:cli},
+         {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]
+    ).then(resolve).catch(reject);
 }
 
 module.exports={factura_sugerencia_direccion}

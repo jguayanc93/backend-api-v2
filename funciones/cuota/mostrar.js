@@ -1,5 +1,5 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
@@ -36,13 +36,11 @@ function consulta4(galleta,diferenciador){ return new Promise((resolve,reject)=>
 
 
 function galleta_credencial(resolve,reject,req){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 function galleta_tipo(resolve,reject,req){
@@ -54,33 +52,19 @@ function galleta_tipo(resolve,reject,req){
     else{reject("falsa galleta")}
 }
 
+/////Solo tres tipos de vendedor tienen cuota. Comprobado en la base: en toda la historia
+/////de tbl_api_vendedores_meta solo hay metas de COBERTURA y CARTERA, y especialista va
+/////por su propia ruta de marcas. A JEFATURA, ZONA y HP nunca se les cargo una.
+/////
+/////Antes caian en "error inesperado" y acababan en un 404, con lo que la pantalla no
+/////podia distinguir entre "la ruta no existe", "el servidor esta mal" y "a esta persona
+/////no le toca cuota". Ahora se rechaza con un motivo que se puede explicar.
+const CON_CUOTA = ['COBERTURA','CARTERA','ESPECIALISTA'];
+
 function tipo_direccionador(resolve,reject,galleta,diferenciador){
-    ////aqui es donde le decimos en texto un mensaje referente al avance
-    switch (diferenciador) {
-        case "COBERTURA":
-            resolve(diferenciador.toLowerCase());
-            break;
-
-        case "CARTERA":
-            resolve(diferenciador.toLowerCase());
-            break;
-
-        case "ESPECIALISTA":
-            resolve(diferenciador.toLowerCase());
-            break;
-
-        case "JEFATURA":
-            resolve(diferenciador.toLowerCase());
-            break;
-
-        case "ZONA":
-            resolve(diferenciador.toLowerCase());
-            break;
-    
-        default:
-            resolve("error inesperado")
-            break;
-    }
+    const tipo = String(diferenciador==null ? '' : diferenciador).trim().toUpperCase();
+    if(CON_CUOTA.includes(tipo)) return resolve(tipo.toLowerCase());
+    return reject("cuota no corresponde");
 }
 
 

@@ -11,6 +11,7 @@ let removeflete =(resolve,reject,conexion,documento)=>{
             reject("error query");
         }
         else{
+            conexion.close();
             resolve("retirado")
         }
     })

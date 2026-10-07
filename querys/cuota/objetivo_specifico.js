@@ -29,7 +29,11 @@ let cuota_avance_objetivo_especifico = (resolve,reject,conexion,galleta,objforma
                     respuesta.push(tmp);
                 });
                 
-                resolve( Number((respuesta[0][0]).toFixed(3)) );
+                /////SUM() devuelve null cuando el vendedor no tiene ninguna venta de esa
+                /////familia en el mes. Antes se llamaba .toFixed() sobre null y el
+                /////TypeError tumbaba el proceso entero, no solo la peticion.
+                const bruto = respuesta[0] ? respuesta[0][0] : null;
+                resolve( bruto == null ? 0 : Number(Number(bruto).toFixed(3)) );
             }
         }
     })

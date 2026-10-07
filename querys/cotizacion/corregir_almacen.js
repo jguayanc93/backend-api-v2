@@ -1,10 +1,11 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
 
 let almacen_corregido = (resolve,reject,conexion,body)=>{
 
     let numero= body.ncoti;
-    let ncoti="009-00"+numero;
+    let ncoti= resolverNdocu(numero);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
 
     let alm=body.alm;
 

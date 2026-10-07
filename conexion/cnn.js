@@ -1,15 +1,13 @@
-const {config} = require('./cadena')
-var Connection=require('tedious').Connection;
+const {adquirir} = require('./pool');
 
-function conn(resolve,reject){
-    let conexion = new Connection(config);
-    conexion.connect();
-    conexion.on('connect',(err)=>{
-        if(err){
-            reject(err);
-        }
-        else{ resolve(conexion); }
-    })
+/////se conserva la firma conn(resolve,reject) para no tocar los 76 archivos que la usan.
+/////lo unico que cambia es que ahora la conexion sale del pool, y el .close() que ya
+/////hacen las consultas la devuelve al pool en vez de cerrar el socket.
+function conn(resolve, reject){
+    adquirir().then(resolve).catch((err) => {
+        console.error('[conexion] no se pudo obtener conexion del pool', err && err.message ? err.message : err);
+        reject('error query');
+    });
 }
 
-module.exports={conn}
+module.exports = {conn};

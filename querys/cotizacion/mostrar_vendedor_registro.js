@@ -1,13 +1,18 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
+
+/////flag se compara como TEXTO a proposito: las cotizaciones eliminadas tienen
+/////flag='*', y compararlo contra un numero fuerza una conversion que revienta con
+/////"Conversion failed when converting the varchar value '*' to data type int".
 
 let coti_validar_vendedor = (resolve,reject,conexion,galleta,body)=>{
 
     let codven= galleta.codigo;
     let numero= body.ncoti;
-    let ncoti="009-00"+numero;
+    let ncoti= resolverNdocu(numero);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
 
-    let sq_sql="select * from mst01cot where flag=0 AND ndocu=@coti AND codven_usu=@codven";
+    let sq_sql="select * from mst01cot where flag='0' AND ndocu=@coti AND codven_usu=@codven";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();

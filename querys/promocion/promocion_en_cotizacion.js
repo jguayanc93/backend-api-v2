@@ -1,9 +1,10 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
 
 let coti_contiene_promocion = (resolve,reject,conexion,cuerpo,promocion)=>{
     
-    let ncoti= "009-00"+cuerpo.ncoti;
+    let ncoti= resolverNdocu(cuerpo.ncoti);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
     let nomprom = "%"+promocion[1]+"%";
     let idprom = "%"+"#"+promocion[0]+"%";
 

@@ -1,6 +1,10 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
 
+/////Los clientes del vendedor. El campo 'tipo' decide la vista:
+/////  'cartera'   -> sus clientes asignados, con facturas y notas de credito del mes
+/////  'cobertura' -> los que facturo este mes SIN tenerlos asignados
+/////Cualquier otro valor devuelve lista vacia.
 let seleccion_clientes = (resolve,reject,conexion,galleta,body)=>{
 
     let vendedor= galleta.codigo;
@@ -15,10 +19,10 @@ let seleccion_clientes = (resolve,reject,conexion,galleta,body)=>{
         else{
             conexion.close();
             
-            if(rows.length==0){
-                reject("no tienes clientes");
-            }
-            else{
+            /////sin clientes es una lista vacia, no un error: igual que las listas de
+            /////cotizaciones, facturas y pedidos. El procedimiento solo mira el mes en
+            /////curso, asi que el dia 1 sale vacia para todos hasta la primera factura.
+            {
                 let respuesta=[];
                 let respuesta2={};
                 let contador=0;

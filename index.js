@@ -46,4 +46,28 @@ app.use('/v1/factura',ruta.factura);
 
 app.use('/v1/reporte',ruta.reporte);
 
-app.listen(port,()=>{console.log("servicio levantado")})
+/////manejador 404: cae aqui cualquier ruta no montada arriba
+app.use((req,res)=>{
+    res.status(404).json({"status":"no encontrado","codigo":4,"msg":"la ruta solicitada no existe"});
+})
+
+/////manejador global de errores: atrapa lo que se escape de los try/catch de cada handler
+/////sin esto, express responde un html con stack trace
+app.use((err,req,res,next)=>{
+    console.error("[error no capturado]",req.method,req.originalUrl,err);
+    if(res.headersSent){ return next(err); }
+    res.status(500).json({"status":"ERROR","codigo":1,"msg":"error interno del servidor"});
+})
+
+/////en node 20+ una promesa rechazada sin capturar mata el proceso.
+/////como el servicio se levanta a mano, eso significa caida hasta que alguien entre al servidor.
+process.on("unhandledRejection",(motivo)=>{
+    console.error("[promesa rechazada sin capturar]",motivo);
+})
+
+process.on("uncaughtException",(err)=>{
+    console.error("[excepcion no capturada]",err);
+})
+
+const {descripcion} = require('./conexion/cadena');
+app.listen(port,()=>{console.log("servicio levantado en el puerto "+port+" | base: "+descripcion())})

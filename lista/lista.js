@@ -17,6 +17,7 @@ const {cotizacionxdiaxelegido} = require('../funciones/lista/cotizacionxdia')
 const {pedidoxdiaxelegido} = require('../funciones/lista/pedidosxdia')
 const {facturaxdiaxelegido} = require('../funciones/lista/facturasxdia')
 const {clientes_atendidos} = require('../funciones/lista/clientes')
+const {detalle_cliente} = require('../funciones/lista/cliente_detalle')
 
 router.use(express.json());
 
@@ -33,6 +34,7 @@ router.post('/pedidosxdia',pedidoxdiaxelegido)
 router.post('/facturasxdia',facturaxdiaxelegido)
 // router.post('/update',modificacion)
 router.post('/clientes',clientes_atendidos)
+router.post('/clientes/detalle',detalle_cliente)
 
 
 module.exports=router

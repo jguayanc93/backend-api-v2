@@ -1,9 +1,13 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
 
+/////flag se compara como TEXTO a proposito: las cotizaciones eliminadas tienen
+/////flag='*', y compararlo contra un numero fuerza una conversion que revienta con
+/////"Conversion failed when converting the varchar value '*' to data type int".
+
 let coti_update_montos = (resolve,reject,conexion,fullpromo)=>{
 
-    let sq_sql="update mst01cot set tota=@tota,toti=@toti,totn=@totn where ndocu=@ncoti and flag=0";
+    let sq_sql="update mst01cot set tota=@tota,toti=@toti,totn=@totn where ndocu=@ncoti and flag='0' and estado='0'";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();

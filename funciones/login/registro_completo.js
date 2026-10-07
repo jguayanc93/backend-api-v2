@@ -1,5 +1,5 @@
+const {leerGalleta} = require('../comunes/auth')
 require('dotenv').config();
-const jws = require('jws');
 // const cookieParser = require('cookie-parser')
 // const {Request,TYPES} = require('../../conexion/cadena')
 const {conn} = require('../../conexion/cnn')
@@ -26,7 +26,7 @@ async function usuario_registrado(req,res,next) {
             domain:'compudiskett.com.pe',
             path:'/',
             httpOnly:true,
-            maxAge:1000 * 60 * 60,
+            maxAge:1000 * 60 * 60 * 24,   ////igual que cdk: /vendedor necesita las dos, y con 1h el vendedor quedaba fuera cada hora aunque su sesion siguiera viva
             sameSite:'None',
             secure:true,
             signed:true
@@ -55,14 +55,11 @@ function consulta3(conexion,galleta,diferenciador,body){
 }
 
 function galleta_credencial(resolve,reject,req,next){
-    let user_id=req.signedCookies.cdk;
-    let valido=jws.verify(user_id,'HS256','chistemas')
-    if(valido){
-        let decodeado=jws.decode(user_id)
-        resolve(decodeado.payload)
-    }
-    else{reject("falsa galleta")}
-    
+    /////el secreto vive en funciones/comunes/auth.js y sale de JWT_SECRET;
+    /////antes estaba escrito a mano en cada copia de esta funcion
+    const payload = leerGalleta(req);
+    if(payload) resolve(payload);
+    else reject("falsa galleta");
 }
 
 module.exports={usuario_registrado}

@@ -1,4 +1,7 @@
 const jws = require('jws');
+/////el mismo secreto con el que se verifica en funciones/comunes/auth.js: si firmaramos
+/////con uno y verificaramos con otro, nadie podria entrar
+const {SECRETO} = require('../funciones/comunes/auth');
 
 let jwtgenerator = (obj) => {
 
@@ -15,7 +18,7 @@ let jwtgenerator = (obj) => {
     const firma = {
         header:{alg:'HS256',"typ":"JWT"},
         payload:userpayloaddata,
-        secret:'chistemas'
+        secret:SECRETO
     }
 
     return jws.sign(firma);

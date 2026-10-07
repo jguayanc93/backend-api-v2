@@ -1,44 +1,22 @@
-require('dotenv').config();
-const {Request,TYPES} = require('../../conexion/cadena')
+const {listar, texto, ES_SU_CLIENTE, TYPES} = require('./opciones');
 
-let factura_sugerencia_atencion = (resolve,reject,conexion,body)=>{
-    
-    let caracter = "%"+body.sugerencia+"%";
-    let cli = body.cli;
+/////Los contactos de un cliente. Lo que devuelve no es una referencia interna: es nombre
+/////y documento de una persona, asi que la lista solo se entrega si el vendedor tiene
+/////alguna factura con ese cliente.
+let factura_sugerencia_atencion = (resolve,reject,conexion,galleta,body)=>{
+    const codven = galleta ? galleta.codigo : null;
+    const cli = String((body && body.cli) || '').trim();
 
-    let sq_sql="select top 5 Nomcon from Dtl01Con where Codn=@cliente and Nomcon like @pista";
-    let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
-        if(err){
-            conexion.close();
-            reject("error query");
-        }
-        else{
-            conexion.close();
-            
-            if(rows.length==0){
-                reject("factura no asignada");
-            }
-            else{
-                let respuesta=[];
-                let respuesta2={};
-                let contador=0;
-                rows.forEach(fila=>{
-                    let tmp={};
-                    fila.map(data=>{
-                        if(contador>=fila.length) contador=0;
-                        typeof data.value=='string' ? tmp[contador]=data.value.trim() : tmp[contador]=data.value;
-                        contador++;
-                    })
-                    respuesta.push(tmp);
-                });
-                Object.assign(respuesta2,respuesta);
-                resolve(respuesta2);
-            }
-        }
-    })
-    consulta.addParameter('cliente',TYPES.VarChar,cli);
-    consulta.addParameter('pista',TYPES.VarChar,caracter);
-    conexion.execSql(consulta);
+    if(!codven){ conexion.close(); return reject("falsa galleta"); }
+    if(!cli){ conexion.close(); return reject("cliente ajeno"); }
+
+    listar(conexion,
+        "select top 5 Nomcon,COUNT(*) OVER () as total from Dtl01Con"+
+        " where Codn=@cliente and Nomcon like @pista"+ES_SU_CLIENTE,
+        [{nombre:'cliente',tipo:TYPES.VarChar,valor:cli},
+         {nombre:'codven',tipo:TYPES.VarChar,valor:codven},
+         {nombre:'pista',tipo:TYPES.VarChar,valor:texto(body && body.sugerencia)}]
+    ).then(resolve).catch(reject);
 }
 
 module.exports={factura_sugerencia_atencion}

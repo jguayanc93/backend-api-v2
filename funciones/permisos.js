@@ -10,12 +10,13 @@ const cotizacion={
     "crear":[20,34,25,32],
     "leer":[20,25,32,34],
     "update":[20,25,34,32],
-    "delete":[25,34,32],
+    "delete":[20,25,34,32],   ////el grupo 20 tambien puede dar de baja, pero solo las suyas: la propiedad la verifica la ruta
     "alm":[20,25,34,32]
 }
 
 const pedido={
-    "flete":[20,34]
+    "flete":[20,34],
+    "alm":[20,25,34,32]   ////mismo criterio que cotizacion.alm
 }
 
 // const pedido={
@@ -31,7 +32,7 @@ const factura={
     "transporte":[20,25,34],
     "atencion":[20,25,34],
     "direccion":[20,25,34],
-    "vendedor":[20,25,34],
+    "vendedor":[34],   ////reasignar la factura a otro vendedor no es privilegio de vendedor: solo jefatura de zona
     "observacion":[20,25,34],
     "orden":[20,25,34]
 }

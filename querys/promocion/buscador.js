@@ -6,19 +6,16 @@ let promo_buscador = (resolve,reject,conexion,respuesta2)=>{
 
     for(let codi in respuesta2){ codi_recolector.push(respuesta2[codi][9]); }
     
-    let contador=1;
-    // let sp_sql="select a.idprom,b.codi from mst_promocion a join dtl_promocion_progra b on b.idprom=a.idprom where a.estado=1 group by a.idprom,b.codi";
-    let sp_sql="select a.idprom,b.codi from mst_promocion a join dtl_promocion_progra b on b.idprom=a.idprom where a.estado=1 AND b.codi in(";
-    for(let codi of codi_recolector){
-        
-        if(contador>=codi_recolector.length){
-            sp_sql+="'"+codi+"'"+') group by a.idprom,b.codi';
-        }
-        else{
-            sp_sql+="'"+codi+"'"+',';
-        }
-        contador++;
+    /////sin items no hay nada que buscar; antes se armaba un IN () invalido
+    if(codi_recolector.length===0){
+        conexion.close();
+        reject("ninguna promocion");
+        return;
     }
+
+    /////marcadores parametrizados: los codigos vienen del request, no se concatenan
+    let marcadores=codi_recolector.map((_,i)=>"@c"+i).join(",");
+    let sp_sql="select a.idprom,b.codi from mst_promocion a join dtl_promocion_progra b on b.idprom=a.idprom where a.estado=1 AND b.codi in("+marcadores+") group by a.idprom,b.codi";
 
     let consulta = new Request(sp_sql,(err,rowCount,rows)=>{
         if(err){
@@ -75,6 +72,7 @@ let promo_buscador = (resolve,reject,conexion,respuesta2)=>{
             }
         }
     })
+    codi_recolector.forEach((c,i)=>consulta.addParameter("c"+i,TYPES.VarChar,c));
     conexion.execSql(consulta);
 }
 

@@ -1,9 +1,10 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {resolverNdocu} = require('../../funciones/comunes/constantes')
 
 let coti_detallado = (resolve,reject,conexion,cuerpo)=>{
 
-    let ncoti= "009-00"+cuerpo.ncoti;
+    let ncoti= resolverNdocu(cuerpo.ncoti);   ////acepta el ndocu completo (009- o 098-) o el numero suelto
 
     let sq_sql="select CONVERT(varchar,fecha,120) as fecha,cdocu,ndocu,codcli,tcam,mone,moneitm,aigv,item,codi,codf,marc,umed,descr,cant,preu,tota,dsct,totn,codalm,cost,msto,ucon,ucom,obse from dtl01cot where ndocu=@coti order by item";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{

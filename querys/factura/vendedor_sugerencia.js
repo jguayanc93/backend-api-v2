@@ -1,42 +1,15 @@
-require('dotenv').config();
-const {Request,TYPES} = require('../../conexion/cadena')
+const {listar, texto, TYPES} = require('./opciones');
 
-let factura_sugerencia_vendedor = (resolve,reject,conexion,galleta,body)=>{
-    
-    let documento = body.opc1;
-
-    let sq_sql="select a.TipEnt,b.despacho from mst01fac a inner join tbl_tipo_despacho b on (b.IDdespacho=a.TipEnt) where a.cdocu in ('01','03') AND a.flag<>'*' AND a.ndge='' AND a.codven_usu=@codven AND a.ndocu=@doc";
-    let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
-        if(err){
-            conexion.close();
-            reject("error query");
-        }
-        else{
-            conexion.close();
-            
-            if(rows.length==0){
-                reject("factura no asignada");
-            }
-            else{
-                let respuesta=[];
-                let respuesta2={};
-                let contador=0;
-                rows.forEach(fila=>{
-                    let tmp={};
-                    fila.map(data=>{
-                        if(contador>=fila.length) contador=0;
-                        typeof data.value=='string' ? tmp[contador]=data.value.trim() : tmp[contador]=data.value;
-                        contador++;
-                    })
-                    respuesta.push(tmp);
-                });
-                Object.assign(respuesta2,respuesta);
-                resolve(respuesta2);
-            }
-        }
-    })
-    consulta.addParameter('doc',TYPES.VarChar,documento);
-    conexion.execSql(consulta);
+/////Los vendedores activos, para reasignar la factura.
+/////
+/////La consulta anterior era copia de la de despacho: devolvia el tipo de despacho de la
+/////factura en vez de la lista, y usaba @codven sin declararlo, asi que respondia 500.
+let factura_sugerencia_vendedor = (resolve,reject,conexion,body)=>{
+    listar(conexion,
+        "select top 5 codven,nomven,COUNT(*) OVER () as total from tbl01ven"+
+        " where estado=1 and nomven like @pista",
+        [{nombre:'pista',tipo:TYPES.VarChar,valor:texto(body && body.sugerencia)}]
+    ).then(resolve).catch(reject);
 }
 
 module.exports={factura_sugerencia_vendedor}
