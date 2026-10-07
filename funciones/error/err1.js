@@ -149,6 +149,11 @@ const error_corrector=(res,mensaje)=>{
         case "cuota ya registrada":
             res.status(409).json({"status":mensaje,"codigo":3,"msg":"ya registraste tu cuota de este mes; solo se puede una vez"})
             break;
+        /////el cuerpo no traia el campo. El monto se manda en "fijado"
+        case "cuota no enviada":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"falta el campo fijado con el monto de la cuota"})
+            break;
+
         case "cuota invalida":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"el monto de la cuota debe ser un numero mayor que cero"})
             break;

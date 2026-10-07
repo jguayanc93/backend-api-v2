@@ -46,10 +46,19 @@ const INSERTAR =
 
 let registro_cuota = async (resolve,reject,conexion,galleta,diferenciador,body,codfam)=>{
     const codusu = galleta ? galleta.identificador : null;
-    const cuota = Number(body ? body.fijado : NaN);
+    const enviado = body ? body.fijado : undefined;
+    const cuota = Number(enviado);
     const porcentaje = Number(body ? body.porcentaje : 0);
 
     if(!codusu){ conexion.close(); return reject("falsa galleta"); }
+
+    /////se separa "no mandaste el campo" de "el valor no sirve": con un solo mensaje, un
+    /////cuerpo con el nombre de campo equivocado hacia que la pantalla acusara al vendedor
+    /////de escribir mal un monto que estaba bien escrito
+    if(enviado === undefined || enviado === null || enviado === ''){
+        conexion.close();
+        return reject("cuota no enviada");
+    }
     if(!isFinite(cuota) || cuota <= 0){
         conexion.close();
         return reject("cuota invalida");
