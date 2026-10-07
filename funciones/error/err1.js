@@ -3,6 +3,13 @@ const error_corrector=(res,mensaje)=>{
     /////////RECUERDA ENVIAR LAS RESPUESTAS SEGUN EL MENSAJE ASI SABRAS COMO CAPTURARLAS EN EL OTRO LADO
 
     switch (mensaje) {
+        /////El numero de cotizacion ya estaba usado: la secuencia seq_cotizacion_098 va
+        /////por detras de mst01cot. Se arregla con
+        /////    ALTER SEQUENCE dbo.seq_cotizacion_098 RESTART WITH <ultimo 098- + 1>;
+        case "correlativo duplicado":
+            res.status(500).json({"status":mensaje,"codigo":1,"msg":"el numero de cotizacion ya existe: la secuencia esta por detras de mst01cot"})
+            break;
+
         case "error query":
             res.status(500).json({"status":mensaje,"codigo":1,"msg":"fallo la ejecucion de una consulta sql"})
             break;

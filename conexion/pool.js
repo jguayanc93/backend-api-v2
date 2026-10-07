@@ -86,6 +86,12 @@ function envolver(conexion){
         commitTransaction: (cb) => conexion.commitTransaction(cb),
         rollbackTransaction: (cb) => conexion.rollbackTransaction(cb),
         on: (evento, cb) => conexion.on(evento, cb),
+        /////hace falta para no dejar escuchadores pegados a una conexion que se reutiliza
+        removeListener: (evento, cb) => conexion.removeListener(evento, cb),
+        /////¿hay transaccion abierta de verdad? SQL Server ya revierte sola cuando elige
+        /////a esta sesion como victima de un bloqueo mutuo, y pedir el rollback despues
+        /////da el error 3903
+        get inTransaction(){ return conexion.inTransaction; },
         /////idempotente: si un handler la libera dos veces, la segunda no hace nada
         close: () => {
             if(entregada) return;

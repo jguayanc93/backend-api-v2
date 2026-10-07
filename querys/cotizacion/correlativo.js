@@ -19,7 +19,16 @@ const {Request,TYPES} = require('../../conexion/cadena')
 const SERIE = "098-";
 const LARGO = 8;
 
-const CON_SECUENCIA = "select NEXT VALUE FOR dbo.seq_cotizacion_098 as numero";
+/////Pide el numero a la secuencia y, en el mismo viaje, comprueba si ya estaba usado.
+/////La comprobacion es un seek por la PK (cdocu,ndocu), asi que no cuesta nada, y evita
+/////que una secuencia mal arrancada tumbe todas las creaciones: si el START WITH quedo
+/////por detras de lo que hay en mst01cot -por ejemplo al copiar el valor de otra base-,
+/////cada INSERT chocaria con la clave primaria y el vendedor veria un 500.
+const CON_SECUENCIA =
+    "declare @n int = NEXT VALUE FOR dbo.seq_cotizacion_098;"+
+    " declare @d char(12) = '"+SERIE+"' + RIGHT(REPLICATE('0',"+LARGO+")+CAST(@n as varchar("+LARGO+")),"+LARGO+");"+
+    " select @n as numero,"+
+    " case when exists(select 1 from mst01cot where cdocu='31' and ndocu=@d) then 1 else 0 end as tomado";
 const SIN_SECUENCIA =
     "select ISNULL(MAX(CAST(RIGHT(ndocu,"+LARGO+") AS int)),0)+1 as numero"+
     " from mst01cot where LEFT(ndocu,3)='098'";
@@ -37,7 +46,8 @@ function pedir(conexion, sql, alFallar){
         if(err) return alFallar(err);
         const fila = rows && rows.length ? rows[0] : null;
         const valor = fila ? fila[0].value : null;
-        alFallar(null, valor);
+        const tomado = fila && fila.length > 1 ? fila[1].value : 0;
+        alFallar(null, valor, tomado);
     });
     conexion.execSql(consulta);
 }
@@ -58,7 +68,7 @@ let num_correlativo = (resolve,reject,conexion)=>{
 
     if(haySecuencia === false) return usarRespaldo();
 
-    pedir(conexion, CON_SECUENCIA, (err,valor)=>{
+    pedir(conexion, CON_SECUENCIA, (err,valor,tomado)=>{
         if(err){
             /////no existe en esta base: se recuerda y se sigue con el calculo de antes
             haySecuencia = false;
@@ -66,6 +76,17 @@ let num_correlativo = (resolve,reject,conexion)=>{
             return usarRespaldo();
         }
         haySecuencia = true;
+
+        /////la secuencia quedo por detras de mst01cot. Se sigue con el maximo para que el
+        /////vendedor pueda trabajar, pero hay que reajustarla: mientras no se haga se
+        /////vuelve a la carrera que la secuencia venia a evitar.
+        if(tomado){
+            console.warn("[num_correlativo] "+formatear(valor)+" ya existe: la secuencia va "+
+                         "por detras de mst01cot. Reajustar con ALTER SEQUENCE "+
+                         "dbo.seq_cotizacion_098 RESTART WITH <ultimo 098- + 1>");
+            return usarRespaldo();
+        }
+
         conexion.close();
         if(valor == null) return reject("correlativo inexistente");
         resolve(formatear(valor));
