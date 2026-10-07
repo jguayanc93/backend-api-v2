@@ -31,7 +31,12 @@ async function cuota_marca_dinamica(req,res,next) {
         const unceava_call = await consulta7(octava_call);///texto del mes
         const doceava_call = await consulta8(decima_call,octava_call,unceava_call);
         
-        res.status(200).json({"estimado":doceava_call});
+        /////`data` es el mismo objeto que la clave vieja. Cada ruta de cuota lo devolvia
+        /////bajo un nombre distinto -simple, multiple, estimado- y en /cuota/simple la
+        /////clave "simple" ademas guarda un texto, no un objeto: la pantalla no podia
+        /////saber donde mirar. `data` es el mismo sitio en todas. La clave anterior se
+        /////mantiene para no romper lo que ya la lee.
+        res.status(200).json({"status":"ok","codigo":0,"data":doceava_call,"estimado":doceava_call});
     }
     catch(err){
         error_corrector(res,err);

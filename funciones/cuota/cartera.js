@@ -39,7 +39,12 @@ async function cuota_cartera(req,res,next) {
                                        doceava_call["meta"], doceava_call["avance"]);
         Object.assign(doceava_call, extra);
         
-        res.status(200).json({"simple":doceava_call});
+        /////`data` es el mismo objeto que la clave vieja. Cada ruta de cuota lo devolvia
+        /////bajo un nombre distinto -simple, multiple, estimado- y en /cuota/simple la
+        /////clave "simple" ademas guarda un texto, no un objeto: la pantalla no podia
+        /////saber donde mirar. `data` es el mismo sitio en todas. La clave anterior se
+        /////mantiene para no romper lo que ya la lee.
+        res.status(200).json({"status":"ok","codigo":0,"data":doceava_call,"simple":doceava_call});
     }
     catch(err){
         error_corrector(res,err);

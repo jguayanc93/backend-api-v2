@@ -18,7 +18,12 @@ async function cuota_especialista(req,res,next) {
         const tercera_call = await consulta2(segunda_call,primera_call);
         const cuarta_call = await consulta3(tercera_call);
         
-        res.status(200).json({"multiple":cuarta_call});
+        /////`data` es el mismo objeto que la clave vieja. Cada ruta de cuota lo devolvia
+        /////bajo un nombre distinto -simple, multiple, estimado- y en /cuota/simple la
+        /////clave "simple" ademas guarda un texto, no un objeto: la pantalla no podia
+        /////saber donde mirar. `data` es el mismo sitio en todas. La clave anterior se
+        /////mantiene para no romper lo que ya la lee.
+        res.status(200).json({"status":"ok","codigo":0,"data":cuarta_call,"multiple":cuarta_call});
     }
     catch(err){
         error_corrector(res,err);
