@@ -20,7 +20,13 @@ async function cuota_simple(req,res,next) {
         // const quinta_call = await consulta3(cuarta_call,tercera_call);
         // const sexta_call = await consulta4(quinta_call);
         
-        res.status(200).json({"simple":tercera_call});
+        /////las dos salidas son 200: "ya la registraste" es un dato, no un fallo.
+        /////`simple` conserva el texto que devolvia antes para no romper lo que ya lo lea.
+        res.status(200).json({"status":"ok","codigo":0,
+                              "simple":tercera_call.estado,
+                              "puedeRegistrar":tercera_call.puedeRegistrar,
+                              "yaRegistrada":tercera_call.yaRegistrada,
+                              "monto":tercera_call.monto});
     }
     catch(err){
         error_corrector(res,err);
