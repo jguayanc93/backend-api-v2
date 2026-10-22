@@ -4,8 +4,9 @@ require('dotenv').config();
 // const {Request,TYPES} = require('../../conexion/cadena')
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
+/////el registro y las marcas del grupo 25 van juntos en una transaccion dentro de logeo_registro;
+/////antes las marcas se guardaban aparte en tbl01api_vendedores_marcas
 let {logeo_registro} = require('../../querys/login/registro');
-let {marcas_registro} = require('../../querys/login/marcas_registro')
 //////espacio para la implementacion del token
 // let {jwtgenerator} = require('../../login/token')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
@@ -13,16 +14,12 @@ const {error_corrector} = require('../error/err1')
 
 async function usuario_registrado(req,res,next) {
     try{
-        ////lo que necesito estan en las cookies firmadas pero solo pueden usarse en produccion no en desarrollo        
+        ////lo que necesito estan en las cookies firmadas pero solo pueden usarse en produccion no en desarrollo
         const primera_call= await consulta1(req,next);
         const segunda_call= await obtenerpromesa_conexion();
         const tercera_call= await consulta2(primera_call,segunda_call,req);
-        if(req.body.marcas.length!==0){
-            const cuarta_call= await obtenerpromesa_conexion();
-            const quinta_call= await consulta3(cuarta_call,primera_call,tercera_call,req.body);
-        }
 
-        res.cookie('tip',tercera_call,{
+        res.cookie('tip',tercera_call.tipo,{
             domain:'compudiskett.com.pe',
             path:'/',
             httpOnly:true,
@@ -31,9 +28,14 @@ async function usuario_registrado(req,res,next) {
             secure:true,
             signed:true
         })
-        res.redirect('/v1/login/identificador');
 
-        // res.status(200).json(JSON.stringify({"grupo":primera_call.nom_grupo}));
+        /////Antes se redirigia a /v1/login/identificador, que solo devuelve el tipo. Ahora la
+        /////respuesta tambien tiene que decir que marcas se asignaron y cuales se saltaron, asi
+        /////que se responde aqui mismo, con la misma forma que identificador ("correcto") para
+        /////que la pantalla siga leyendo el tipo donde lo leia.
+        /////marcas y confirmado solo vienen en el grupo 25 (ver logeo_registro)
+        res.status(200).json(JSON.stringify(Object.assign({"correcto":tercera_call.tipo},
+            tercera_call.marcas ? {"marcas":tercera_call.marcas,"confirmado":tercera_call.confirmado} : {})));
     }
     catch(err){
         error_corrector(res,err);
@@ -48,10 +50,6 @@ function consulta1(req,next){
 
 function consulta2(payload,conexion,req){
     return new Promise((resolve,reject)=>logeo_registro(resolve,reject,payload,conexion,req))
-}
-
-function consulta3(conexion,galleta,diferenciador,body){
-    return new Promise((resolve,reject)=>marcas_registro(resolve,reject,conexion,galleta,diferenciador,body))
 }
 
 function galleta_credencial(resolve,reject,req,next){

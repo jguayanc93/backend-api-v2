@@ -7,6 +7,8 @@ const listas=["listas","Lista tus ventas realizadas"];
 const cuota=["cuota","Ver el avance de las cuotas"];
 const reporte=["reporte","Permite sacar reportes de marcas"];
 const despachador=["programador","Permite entregar factura a almacen"];
+const marcas=["marcas","Elige y administra tus marcas del mes"];
+const ajuste=["ajuste","Pide al especialista de la marca que ajuste el precio de tus cotizaciones y pedidos"];
 
 
 const grp20={
@@ -16,14 +18,24 @@ const grp20={
     [factura[0]]:factura[1],
     [prom[0]]:prom[1],
     [cuota[0]]:cuota[1],
-    [despachador[0]]:despachador[1]
+    [despachador[0]]:despachador[1],
+    [ajuste[0]]:ajuste[1]
 }
+/////grupo 25: jefaturas y especialistas comparten el mismo menu (decidido el 2026-10-21; vendedor
+/////del mes se agrego el 2026-10-22).
+/////factura y promocion salieron del menu; sus permisos en permisos.js no se tocaron, porque la
+/////pantalla de cotizacion puede usar las rutas de promocion.
+const cobertura_marcas=["cobertura","Revisa a que clientes se les vendio cada marca en el mes"];
+const ajuste_recibidas=["ajuste","Recibe y responde las solicitudes de ajuste de precio de los vendedores"];
+const vendedormes=["vendedormes","Los 3 vendedores que mas venden cada una de tus marcas en el mes"];
 const grp25={
-    [coti[0]]:coti[1],
-    [factura[0]]:factura[1],
-    [prom[0]]:prom[1],
-    [cuota[0]]:cuota[1],
-    [reporte[0]]:reporte[1]
+    [marcas[0]]:marcas[1],
+    [cuota[0]]:"Fija las metas de tus marcas y revisa su avance",
+    [reporte[0]]:"Stock, tiempo en almacen, lista de precios y guias de tus marcas",
+    [cobertura_marcas[0]]:cobertura_marcas[1],
+    [ajuste_recibidas[0]]:ajuste_recibidas[1],
+    [vendedormes[0]]:vendedormes[1],
+    [coti[0]]:coti[1]
 };
 const grp34={
     [coti[0]]:coti[1],

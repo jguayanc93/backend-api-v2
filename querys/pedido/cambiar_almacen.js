@@ -1,4 +1,6 @@
 const {Request,TYPES} = require('../../conexion/cadena');
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../ajuste/ajuste');
 
 /////Cambia el almacen de un pedido, en una sola conexion y dentro de una transaccion.
 /////
@@ -73,6 +75,11 @@ let cambiar_almacen = async (resolve,reject,conexion,galleta,cuerpo)=>{
             await revertir(conexion); abierta=false;
             conexion.close();
             return reject("pedido no modificable");
+        }
+        if(await enAjuste(conexion, npedi)){
+            await revertir(conexion); abierta=false;
+            conexion.close();
+            return reject("documento en ajuste");
         }
 
         /////3) el detalle

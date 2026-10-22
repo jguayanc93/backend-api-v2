@@ -2,7 +2,8 @@ const {conn} = require('../../conexion/cnn')
 let {tipo_cambio} = require('../../querys/cotizacion/tipcambio');
 ///////ESPACIO PARA FUNCIONES GENERALES
 let modulos = require('../modulos')
-const {leerGalleta} = require('../comunes/auth')
+const {leerGalleta, tienePermiso} = require('../comunes/auth')
+const {contarPendientes} = require('../../querys/ajuste/ajuste')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
 
@@ -26,6 +27,8 @@ async function grupos_modulos(req,res,next) {
 
         /////el tipo de cambio del dia: el frontend tenia uno fijo escrito a mano
         const cambio = await tipoCambioDelDia();
+        /////solicitudes de ajuste de precio pendientes, para el numerito del menu
+        const pendientes = await ajustesPendientes(payload);
 
         res.status(200).json({
             "status":"ok", "codigo":0,
@@ -33,7 +36,8 @@ async function grupos_modulos(req,res,next) {
             "nombre": payload.nombre,
             "grupo": payload.nom_grupo,
             "tipo": req.signedCookies ? req.signedCookies.tip : null,
-            "tipoCambio": cambio
+            "tipoCambio": cambio,
+            "ajustesPendientes": pendientes
         });
     }
     catch(err){
@@ -52,6 +56,19 @@ function tipoCambioDelDia(){
                 conexion),
             ()=>resolve(null)
         );
+    });
+}
+
+/////Grupo 25: las que le llegaron y esperan respuesta. Grupo 20: las que envio y aun no le
+/////responden. Otros grupos, o si falla la consulta: null (la pantalla se abre igual).
+function ajustesPendientes(payload){
+    if(!tienePermiso(payload,'ajuste','recibidas') && !tienePermiso(payload,'ajuste','enviadas')) return Promise.resolve(null);
+    return new Promise((resolve)=>{
+        conn(async (conexion)=>{
+            try{ resolve(await contarPendientes(conexion, String(payload.identificador).trim(), payload.id_grupo)); }
+            catch(e){ resolve(null); }
+            finally{ conexion.close(); }
+        }, ()=>resolve(null));
     });
 }
 

@@ -52,18 +52,20 @@ function galleta_tipo(resolve,reject,req){
     else{reject("falsa galleta")}
 }
 
-/////Solo tres tipos de vendedor tienen cuota. Comprobado en la base: en toda la historia
-/////de tbl_api_vendedores_meta solo hay metas de COBERTURA y CARTERA, y especialista va
-/////por su propia ruta de marcas. A JEFATURA, ZONA y HP nunca se les cargo una.
+/////A donde va cada tipo de vendedor:
+/////  - COBERTURA y CARTERA (grupo 20): su cuota de un solo monto, en tbl_api_vendedores_meta
+/////  - ESPECIALISTA y JEFATURA (grupo 25): su cuota por marca, en /cuota/marcas. Antes el
+/////    especialista iba a /cuota/especialista y la jefatura no tenia cuota.
+/////A ZONA y HP nunca se les cargo una cuota.
 /////
-/////Antes caian en "error inesperado" y acababan en un 404, con lo que la pantalla no
-/////podia distinguir entre "la ruta no existe", "el servidor esta mal" y "a esta persona
-/////no le toca cuota". Ahora se rechaza con un motivo que se puede explicar.
-const CON_CUOTA = ['COBERTURA','CARTERA','ESPECIALISTA'];
+/////A los que no tienen cuota se les rechaza con un motivo que se puede explicar. Antes caian
+/////en "error inesperado" y acababan en un 404, con lo que la pantalla no podia distinguir
+/////entre "la ruta no existe", "el servidor esta mal" y "a esta persona no le toca cuota".
+const RUTA_CUOTA = {COBERTURA:'cobertura', CARTERA:'cartera', ESPECIALISTA:'marcas', JEFATURA:'marcas'};
 
 function tipo_direccionador(resolve,reject,galleta,diferenciador){
     const tipo = String(diferenciador==null ? '' : diferenciador).trim().toUpperCase();
-    if(CON_CUOTA.includes(tipo)) return resolve(tipo.toLowerCase());
+    if(RUTA_CUOTA[tipo]) return resolve(RUTA_CUOTA[tipo]);
     return reject("cuota no corresponde");
 }
 

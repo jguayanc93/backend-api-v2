@@ -10,18 +10,13 @@ const {objevacio} = require('../funciones/objvacio')
 //////ESPACIO PARA FUNCIONES DE COMPROBACION PARA LOS QUERYS
 const {cuota_permisos} = require('../funciones/cuota/permisos')
 const {cuota_revisar} = require('../funciones/cuota/revisar')
-const {cuota_marca_revisor_rapido} = require('../funciones/cuota/revisar_marca')
 const {cuota_registrar} = require('../funciones/cuota/registrar')
-const {cuota_registrar_marca} = require('../funciones/cuota/registrar_marca')
 const {cuota_direccionador} = require('../funciones/cuota/mostrar')
 const {cuota_cobertura} = require('../funciones/cuota/cobertura')
 const {cuota_cartera} = require('../funciones/cuota/cartera')
-const {cuota_especialista} = require('../funciones/cuota/especialista')
-// const {} = require('../funciones/cuota/jefatura')
 const {cuota_simple} = require('../funciones/cuota/simple')
-const {cuota_multiple} = require('../funciones/cuota/multiple')
-
-const {cuota_marca_dinamica} = require('../funciones/cuota/marca')
+const {ver_cuota_marcas, fijar_meta_marca} = require('../funciones/cuota/marcas_meta')
+const {exigirPermiso} = require('../funciones/comunes/auth')
 
 router.use(express.json());
 
@@ -30,19 +25,21 @@ router.get('/',objevacio,cuota_permisos)
 // router.get('/',(req,res)=>{res.status(200).send("deberia enviarte al login de nuevo por no tener galletas")})
 ////////////REVISA PORQE ESTE COTIZACION DA PROBLEMAS 009-00910388 CUANDO SE LE PIDE QUE TRAIGA SUS PROMOCIONES
 router.get('/simple',cuota_simple)
-router.get('/multiple',cuota_multiple)
 // router.get('/superior',)
 /////estas rutas son para sus respectivos accesos segun pueda o no
 router.get('/revisar',cuota_revisar)
-router.post('/marcarevisar',cuota_marca_revisor_rapido)
 router.post('/update',auditar('cuota','registrar'),cuota_registrar)
-router.post('/marcaupdate',auditar('cuota','registrar marca'),cuota_registrar_marca)
 router.get('/mostrar',cuota_direccionador)
-router.post('/marcamostrar',cuota_marca_dinamica)
 /////mandalos a sus respectivas rutas
 router.get('/cobertura',cuota_cobertura)
 router.get('/cartera',cuota_cartera)
-router.get('/especialista',cuota_especialista)
-// router.post('/jefatura')
+
+/////Cuota por marca del grupo 25 (especialistas y jefaturas): ver la meta y el avance de sus
+/////marcas del mes y fijar la meta. Contrato: docs/cuota-grupo25.md
+/////Reemplaza a /especialista, /multiple, /marcarevisar, /marcaupdate y /marcamostrar, que se
+/////retiraron el 2026-10-21 (guardaban la meta en tbl01api_jefaturas_meta y buscaban la marca
+/////por texto).
+router.get('/marcas',exigirPermiso('cuota','marcas'),ver_cuota_marcas)
+router.post('/marcas/meta',auditar('cuota','meta marca'),exigirPermiso('cuota','meta marca'),fijar_meta_marca)
 
 module.exports=router

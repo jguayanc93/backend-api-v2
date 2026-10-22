@@ -90,11 +90,42 @@ function normalizarFecha(valor){
     return limpio.replace(/-/g,'');
 }
 
+/////Diferenciadores que puede elegir cada grupo al registrarse. Son los que existen hoy en
+/////tbl_api_vendedores_diferenciador. Antes el registro aceptaba cualquier texto, y ese
+/////texto arma la ruta /v1/vendedor/<tipo>: un tipo inventado terminaba en un 404.
+const TIPOS_POR_GRUPO = {
+    20: ['COBERTURA','CARTERA'],
+    25: ['ESPECIALISTA','JEFATURA'],
+    34: ['ZONA'],
+    39: ['HP']          ////CHAKAL ya no se usa (2026-10-16); quien ya esta registrado asi no se toca
+};
+
+/////El grupo 25 elige marcas al registrarse. El tope solo frena un envio absurdo:
+/////un especialista lleva de 1 a unas 20.
+const MAX_MARCAS_REGISTRO = 50;
+
+/////Reporte de tiempo en almacen: los dias se cuentan desde la ultima entrada con alguna
+/////de estas glosas del kardex (01 compra en el pais, 02 compra en el exterior). Se dejan
+/////fuera las devoluciones de cliente (05), los ajustes (09) y la proteccion de precio (21):
+/////una devolucion de una unidad haria parecer recien llegado un stock de meses.
+const GLOSAS_COMPRA = ['01','02'];
+/////cuantos años de kardex se revisan hacia atras, contando el actual
+const ANNOS_KARDEX = 4;
+
+/////Cuota por marca: tipos de venta (mst01fac.codvta, catalogo tbl01vta) que suman al avance.
+/////01 mercaderia y 08 licitaciones; no cuentan venta al exterior (07), servicios (02),
+/////transferencia gratuita (04) ni anticipos. Decision de negocio del 2026-10-19.
+const CODVTA_CUOTA = ['01','08'];
+
+/////Cuota por marca: cuantos meses hacia atras se pueden consultar (solo lectura)
+const MESES_HISTORIA_CUOTA = 2;
+
 module.exports = {
     IGV, CON_IGV,
     SKU_DESCUENTO, MARCA_BONIFICACION, MARCA_DESCUENTO, MARCA_FLETE,
     LARGO_DESCRIPCION, SERIES_CONOCIDAS, normalizarNdocu, resolverNdocu, PREFIJO_LEGADO,
     COT, PROM, PROMDET,
     AMBITO, BENEFICIO, OTORGA, METRICA,
-    normalizarFecha
+    normalizarFecha,
+    TIPOS_POR_GRUPO, MAX_MARCAS_REGISTRO, GLOSAS_COMPRA, ANNOS_KARDEX, CODVTA_CUOTA, MESES_HISTORIA_CUOTA
 };

@@ -46,8 +46,10 @@ const promocion={
 }
 
 const cuota={
-    "crear":[20,25,34],
+    "crear":[20,34],     ////el grupo 25 no registra una cuota de un solo monto: su cuota va por marca
     "leer":[20,25,34],
+    "marcas":[25],          ////cuota por marca del grupo 25
+    "meta marca":[25],
     "update":[],
     "delete":[]    
 }
@@ -64,10 +66,40 @@ const programador={
     "retirar":[]
 }
 
+/////marcas del mes del grupo 25. Que sea jefatura o especialista lo decide la consulta:
+/////es jefatura quien tiene familia en tbl01_api_jefatura_familia
+const marcas={
+    "ver":[25],
+    "confirmar":[25],
+    "asignar":[25],
+    "retirar":[25],
+    "estado":[25]
+}
+
+/////cobertura de clientes del grupo 25 (no es la cuota de cobertura del grupo 20)
+const cobertura={
+    "clientes":[25]
+}
+
+/////ajuste de precio: el vendedor envia cotizaciones y pedidos; el especialista o la jefatura ajusta
+/////las claves son tambien las acciones que devuelve GET /ajuste (los accesos de cada grupo)
+const ajuste={
+    "enviar":[20],       ////enviar y ver la vista previa
+    "enviadas":[20],
+    "recibidas":[25]     ////recibidas, abrir, confirmar y rechazar
+}
+
+/////vendedor del mes: los 3 vendedores del grupo 20 que mas venden cada marca
+const vendedormes={
+    "ver":[25]
+}
+
 const reporte={
     "stock":[25],
     "tiempo":[25],
-    "precio":[25]
+    "precio":[25],
+    "guias":[25],
+    "marcas":[25]     ////la lista de marcas que puede consultar
 }
 
 
@@ -80,5 +112,9 @@ permisos["cuota"]=cuota;
 permisos["lista"]=lista;
 permisos["programador"]=programador;
 permisos["reporte"]=reporte;
+permisos["marcas"]=marcas;
+permisos["cobertura"]=cobertura;
+permisos["ajuste"]=ajuste;
+permisos["vendedormes"]=vendedormes;
 
 module.exports=permisos;

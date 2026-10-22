@@ -11,7 +11,9 @@ const {normalizarFecha} = require('../../funciones/comunes/constantes')
 /////
 /////"registrado" sale de FecReg y no de fecha: fecha siempre viene a las 00:00:00, asi
 /////que por si sola no sirve para ordenar las del dia.
-/////En pedidos llegan 0-6; editable (7) llega null, y 8 y 9 no aplican.
+/////En pedidos llegan 0-7; 8 y 9 no aplican. Estado: 'sin aprobar' (flag 0 y apro 0), 'aprobado'
+/////o 'atendido'. Editable (7) es 1 solo sin aprobar: es lo que acepta el ajuste de precios.
+/////Antes todo pedido con flag 0 salia como 'aprobado', tambien los que aun no lo estaban.
 let pedi_dia_elegido = (resolve,reject,conexion,galleta,body)=>{
 
     let vendedor= galleta.codigo;
@@ -24,7 +26,7 @@ let pedi_dia_elegido = (resolve,reject,conexion,galleta,body)=>{
     }
     if(desde > hasta){ const tmp=desde; desde=hasta; hasta=tmp; }
 
-    let sq_sql="select CONVERT(varchar,fecha,111),ndocu,nomcli,totn,mone,CONVERT(varchar,FecReg,120),(case flag when '1' then 'atendido' when '0' then 'aprobado' end),CAST(NULL AS varchar(20)) from mst01ped where fecha>=@desde and fecha<DATEADD(day,1,@hasta) and codven_usu=@codven and ISNULL(flag,'')<>'*' order by FecReg desc";
+    let sq_sql="select CONVERT(varchar,fecha,111),ndocu,nomcli,totn,mone,CONVERT(varchar,FecReg,120),(case when flag='1' then 'atendido' when flag='0' and apro='0' then 'sin aprobar' else 'aprobado' end),(case when flag='0' and apro='0' then 1 else 0 end) from mst01ped where fecha>=@desde and fecha<DATEADD(day,1,@hasta) and codven_usu=@codven and ISNULL(flag,'')<>'*' order by FecReg desc";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();

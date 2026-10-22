@@ -46,6 +46,14 @@ app.use('/v1/factura',ruta.factura);
 
 app.use('/v1/reporte',ruta.reporte);
 
+app.use('/v1/marcas',ruta.marcas);
+
+app.use('/v1/cobertura',ruta.cobertura);
+
+app.use('/v1/ajuste',ruta.ajuste);
+
+app.use('/v1/vendedormes',ruta.vendedormes);
+
 /////manejador 404: cae aqui cualquier ruta no montada arriba
 app.use((req,res)=>{
     res.status(404).json({"status":"no encontrado","codigo":4,"msg":"la ruta solicitada no existe"});

@@ -1,5 +1,7 @@
 const {Request,TYPES} = require('../../conexion/cadena');
 const {IGV, CON_IGV} = require('../../funciones/comunes/constantes');
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../ajuste/ajuste');
 
 /////Reescribe el detalle de una cotizacion en UNA sola conexion y dentro de una
 /////transaccion.
@@ -96,6 +98,11 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
             await revertir(conexion); abierta=false;
             conexion.close();
             return reject("coti no modificable");
+        }
+        if(await enAjuste(conexion, documento)){
+            await revertir(conexion); abierta=false;
+            conexion.close();
+            return reject("documento en ajuste");
         }
 
         /////2) fuera el detalle viejo

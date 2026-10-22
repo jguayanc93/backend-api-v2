@@ -25,4 +25,12 @@ const factura = require('../factura/factura.js');
 
 const reporte = require('../reporte/reportes.js');
 
-module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido}
+const marcas = require('../marcas/marcas.js');
+
+const cobertura = require('../cobertura/cobertura.js');
+
+const ajuste = require('../ajuste/ajuste.js');
+
+const vendedormes = require('../vendedormes/vendedormes.js');
+
+module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido,marcas,cobertura,ajuste,vendedormes}

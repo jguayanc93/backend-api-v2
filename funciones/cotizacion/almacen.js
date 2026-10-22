@@ -9,12 +9,20 @@ let {almacen_corregido} = require('../../querys/cotizacion/corregir_almacen')
 
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../../querys/ajuste/ajuste')
+const {resolverNdocu} = require('../comunes/constantes')
 
 async function almacen_cambio(req,res,next) {
     try{
         const primera_call = await consulta1(req,next);//galletas
         const segunda_call = await obtenerpromesa_conexion();
         const tercera_call = await consulta2(segunda_call,primera_call,req.body);
+        const revision = await obtenerpromesa_conexion();
+        let bloqueado = false;
+        try{ bloqueado = await enAjuste(revision, resolverNdocu(req.body ? req.body.ncoti : null)); }
+        finally{ revision.close(); }
+        if(bloqueado) return error_corrector(res,"documento en ajuste");
         const quinta_call = await obtenerpromesa_conexion();
         const sexta_call = await consulta3(quinta_call,req.body);
 

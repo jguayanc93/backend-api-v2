@@ -1,5 +1,7 @@
 const {Request,TYPES} = require('../../conexion/cadena');
 const {SKU_DESCUENTO, MARCA_BONIFICACION, MARCA_FLETE, IGV, CON_IGV} = require('../../funciones/comunes/constantes');
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../ajuste/ajuste');
 
 /////Quita promociones de una cotizacion en UNA sola conexion y dentro de una transaccion.
 /////Antes esto eran 3 conexiones distintas sin transaccion: si fallaba a mitad, las lineas
@@ -57,6 +59,11 @@ let remover_promociones = async (resolve,reject,conexion,galleta,documento,items
             await revertir(conexion); abierta=false;
             conexion.close();
             return reject("coti no modificable");
+        }
+        if(await enAjuste(conexion, documento)){
+            await revertir(conexion); abierta=false;
+            conexion.close();
+            return reject("documento en ajuste");
         }
 
         /////2) borrar SOLO lineas de promocion: el endpoint quita promociones, no productos

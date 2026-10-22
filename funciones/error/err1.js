@@ -175,6 +175,132 @@ const error_corrector=(res,mensaje)=>{
         case "fecha invalida":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"la fecha debe venir como AAAA-MM-DD"})
             break;
+        /////registro del usuario en la intranet (/login/registro/completado)
+        case "usuario ya registrado":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"este usuario ya esta registrado en la intranet"})
+            break;
+        case "diferenciador invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el tipo de vendedor elegido no corresponde a su grupo"})
+            break;
+        case "jefatura sin familia":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"no tiene una familia asignada como jefatura; avise a sistemas para que la carguen"})
+            break;
+        case "marcas invalidas":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la lista de marcas no es valida: deben ser codigos de marca de 4 digitos, de 1 a 50"})
+            break;
+        /////marcas del mes del grupo 25 (/v1/marcas)
+        case "marcas ya confirmadas":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"ya confirmaste tus marcas de este mes; no se pueden cambiar hasta el mes siguiente"})
+            break;
+        case "solo jefatura":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"solo la jefatura de la familia puede hacer esto"})
+            break;
+        case "destino invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"falta el codusu del especialista, o es el tuyo: tus propias marcas se toman con confirmar"})
+            break;
+        case "destino no especialista":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el codusu indicado no es un especialista registrado"})
+            break;
+        case "estado invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"trabajada debe ser true o false"})
+            break;
+        case "marca desconocida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la marca no existe"})
+            break;
+        case "marca de otra familia":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"la marca pertenece a otra familia"})
+            break;
+        /////reportes por marca (/v1/reporte/marca)
+        case "codmar invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"falta el codigo de la marca o no tiene 4 digitos"})
+            break;
+        case "formato invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el formato debe ser json o xlsx"})
+            break;
+        /////cuota por marca (/v1/cuota/marcas)
+        case "cuota por marca":
+            res.status(200).json({"status":mensaje,"codigo":0,"msg":"tu cuota no se registra aqui: se fija por marca, en tu cuota por marca","aplica":false,"ruta":"/v1/cuota/marcas"})
+            break;
+        /////ajuste de precio (/v1/ajuste)
+        case "fechas invalidas":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"las fechas deben venir como AAAA-MM-DD, existir, y desde no puede ser posterior a hasta"})
+            break;
+        case "tipo invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el tipo debe ser COT (cotizacion) o PED (pedido)"})
+            break;
+        case "documento desconocido":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"el documento no existe o no es tuyo"})
+            break;
+        case "documento no ajustable":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento ya no se puede ajustar: la cotizacion ya fue aprobada, o el pedido ya fue aprobado, facturado o anulado"})
+            break;
+        case "documento en ajuste":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento esta en ajuste de precio: no se puede modificar hasta que respondan o venza la solicitud"})
+            break;
+        case "sin responsables":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"ninguna marca del documento tiene un especialista o jefatura que la vea este mes"})
+            break;
+        case "solicitud desconocida":
+            res.status(404).json({"status":mensaje,"codigo":2,"msg":"la solicitud no existe o no te fue enviada"})
+            break;
+        case "solicitud cerrada":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"la solicitud ya fue respondida, vencio o se cerro"})
+            break;
+        case "ajuste vacio":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"no se envio ninguna linea para ajustar; si no hay cambios, rechaza la solicitud"})
+            break;
+        case "linea ajena":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"una de las lineas no es de esta solicitud, o viene repetida"})
+            break;
+        case "precio invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el precio debe ser un numero mayor que cero"})
+            break;
+        case "precio bajo costo":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el precio no puede quedar por debajo del costo del producto"})
+            break;
+        case "costo desconocido":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"no se encontro el costo del producto en el almacen de la linea"})
+            break;
+        case "cantidad invalida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la cantidad debe ser un numero entero de 1 o mas"})
+            break;
+        case "cantidad no ajustable":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"en un pedido solo se ajusta el precio, no la cantidad"})
+            break;
+        case "observacion requerida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"al rechazar hay que explicar por que en la observacion"})
+            break;
+        case "mes no disponible":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y el anterior; anno y mes van juntos"})
+            break;
+        case "periodo invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y los dos anteriores; anno y mes van juntos"})
+            break;
+        case "sin marcas en ese mes":
+            res.status(200).json({"status":mensaje,"codigo":0,"msg":"no tuvo marcas asignadas en ese mes","marcas":{}})
+            break;
+        case "meta solo del dueno":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"solo quien tiene la marca este mes puede fijar su meta"})
+            break;
+        case "marcas sin confirmar":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"primero confirma tus marcas del mes; despues podras fijar sus metas"})
+            break;
+        case "meta invalida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"las metas deben ser numeros mayores que cero (para quitar una meta se manda vacia); las unidades, enteras; el margen en % no puede pasar de 100"})
+            break;
+        case "meta vacia":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"no se envio ninguna meta: monto, margen, margenPct o unidades"})
+            break;
+        case "rango invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"las fechas deben venir como AAAA-MM-DD, desde no puede ser posterior a hasta, y el periodo no puede pasar de 3 meses"})
+            break;
+        case "marca no disponible":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"esta marca no esta entre las que puede consultar este mes"})
+            break;
+        /////no tener marcas en el mes no es un error: la pantalla debe abrirse y pedir que las elija
+        case "sin marcas del mes":
+            res.status(200).json({"status":mensaje,"codigo":0,"msg":"no tiene marcas asignadas este mes","debeAsignar":true,"marcas":{}})
+            break;
         default:
             console.error("[error_corrector] mensaje sin case:",mensaje);
             res.status(500).json({"status":"ERROR","codigo":1,"msg":"error interno del servidor"})

@@ -33,13 +33,16 @@ function consulta1(req){ return new Promise((resolve,reject)=>galleta_credencial
 function consulta2(grupo){ return new Promise((resolve,reject)=>manejador_grupos(resolve,reject,grupo)) }
 
 function manejador_grupos(resolve,reject,grupo){
-    switch (grupo) {
+    /////codgru es char(2) y llega como texto ("25"); String() cubre tambien un numero
+    switch (String(grupo).trim()) {
         case "20":
             resolve("simple");
             break;
 
+        /////el grupo 25 no registra una cuota de un solo monto: su cuota se fija por marca
+        /////(/cuota/marcas). Antes se le mandaba a /cuota/multiple, la pantalla antigua
         case "25":
-            resolve("multiple");
+            reject("cuota por marca");
             break;
 
         case "34":

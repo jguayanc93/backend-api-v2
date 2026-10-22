@@ -10,6 +10,8 @@ const {haciaMemoria, sinCerrar} = require('./destino')
 let descuento = require('./descuento')
 let bonificacion = require('./bonificacion')
 const {normalizarNdocu} = require('../comunes/constantes')
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../../querys/ajuste/ajuste')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
 
@@ -36,6 +38,9 @@ async function prom_acoplar(req,res,next) {
         /////1) la cotizacion tiene que ser de este vendedor y seguir abierta
         if(!await tx.validar(conexion, documento, req.usuario ? req.usuario.codigo : null)){
             return await abortar(conexion, res, "coti no modificable", ()=>abierta=false);
+        }
+        if(await enAjuste(conexion, documento)){
+            return await abortar(conexion, res, "documento en ajuste", ()=>abierta=false);
         }
 
         /////2) estado actual de la cotizacion y definicion de la promocion

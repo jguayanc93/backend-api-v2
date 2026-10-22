@@ -1,5 +1,7 @@
 const {Request,TYPES} = require('../../conexion/cadena');
 const {normalizarNdocu} = require('../../funciones/comunes/constantes');
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../ajuste/ajuste');
 
 /////Da de baja una cotizacion llamando al procedimiento del ERP, AnulaCotFac, dentro de
 /////una transaccion y con todas las comprobaciones hechas antes.
@@ -62,6 +64,11 @@ let anular_cotizacion = async (resolve,reject,conexion,galleta,cuerpo)=>{
             await revertir(conexion); abierta=false;
             conexion.close();
             return reject("coti desconocida");
+        }
+        if(await enAjuste(conexion, documento)){
+            await revertir(conexion); abierta=false;
+            conexion.close();
+            return reject("documento en ajuste");
         }
 
         const fila   = cabecera.rows[0];

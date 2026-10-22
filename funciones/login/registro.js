@@ -9,6 +9,7 @@ require('dotenv').config();
 // let {jwtgenerator} = require('../../login/token')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
+const {TIPOS_POR_GRUPO} = require('../comunes/constantes')
 
 async function usuario_tipo(req,res,next) {
     try{
@@ -17,7 +18,10 @@ async function usuario_tipo(req,res,next) {
         // const segunda_call= await obtenerpromesa_conexion();
         // const tercera_call= await consulta2(primera_call,segunda_call);
 
-        res.status(200).json(JSON.stringify({"grupo":primera_call.nom_grupo}));
+        /////diferenciadores: los tipos que el registro acepta para este grupo. Antes la pantalla
+        /////los tenia escritos en su propio catalogo, y si aqui cambiaban nadie se enteraba.
+        res.status(200).json(JSON.stringify({"grupo":primera_call.nom_grupo,
+            "diferenciadores":TIPOS_POR_GRUPO[parseInt(primera_call.id_grupo)] || []}));
     }
     catch(err){
         error_corrector(res,err);

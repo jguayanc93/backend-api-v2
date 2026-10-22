@@ -1,5 +1,7 @@
 const {Request,TYPES} = require('../../conexion/cadena');
 const {SKU_DESCUENTO, MARCA_FLETE} = require('../../funciones/comunes/constantes');
+/////mientras un especialista ajusta sus precios, el vendedor no toca el documento
+const {enAjuste} = require('../ajuste/ajuste');
 
 /////Aplica el flete de provincia a un pedido, llamando al procedimiento del ERP.
 /////
@@ -83,6 +85,10 @@ let activar_flete = async (resolve,reject,conexion,galleta,cuerpo)=>{
         if(duenio.length===0){
             conexion.close();
             return reject("pedido no modificable");
+        }
+        if(await enAjuste(conexion, npedi)){
+            conexion.close();
+            return reject("documento en ajuste");
         }
 
         /////2) si ya lo tiene, no se llama al procedimiento: el trigger tampoco haria nada,
