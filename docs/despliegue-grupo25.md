@@ -1,6 +1,6 @@
 # Despliegue del grupo 25
 
-Que hay que hacer para subir la rama `grupo25` (marcas, cuota por marca, reportes, cobertura,
+Que hay que hacer para subir el grupo 25 (marcas, cuota por marca, reportes, cobertura,
 ajuste de precios, vendedor del mes y la mejora de auditoria). Para quien despliega, no para el
 frontend.
 
@@ -14,7 +14,7 @@ viejas de reportes y de la cuota del especialista dejan de funcionar.
 
 | | |
 |---|---|
-| Codigo | rama `grupo25`, 4 commits sobre `eaf82e9` |
+| Codigo | rama `main` del repositorio `backend-api-v2` (remoto `nuevo`): 5 commits sobre `eaf82e9`, hasta «despliegue del grupo 25: rama main» |
 | Dependencias | ninguna nueva: `package.json` no cambio. No hace falta `npm install` |
 | Variables de entorno | una nueva y **solo en el servidor de prueba**: `CORS_ORIGENES_EXTRA` |
 | Base de datos | 7 tablas nuevas (`tbl01_api_*`), catalogo de marcas, jefaturas y el arreglo de la auditoria |
@@ -26,7 +26,8 @@ viejas de reportes y de la cuota del especialista dejan de funcionar.
 bdnava08 **ya tiene todo**: las 7 tablas, el catalogo, las jefaturas, la auditoria arreglada y los
 datos de prueba. Solo falta el codigo.
 
-1. Traer la rama: `git fetch` y `git checkout grupo25` (o `git pull` si ya esta en ella).
+1. Traer el codigo: en la carpeta del servicio, `git pull` de la rama `main` del repositorio
+   `backend-api-v2` (github.com/jguayanc93/backend-api-v2).
 2. En el `.env` del servidor de prueba, agregar:
    ```
    CORS_ORIGENES_EXTRA=http://127.0.0.1:8080
@@ -59,7 +60,7 @@ En este orden, el mismo dia que el frontend:
    - la consulta 5: marcas repartidas entre familias. Corregir a mano las que esten en la familia
      equivocada (`update tbl01_api_marcas_estado set codfam='..' where codmar='....'`).
 4. **No** correr `datos_prueba_grupo25.sql`: es solo para bdnava08.
-5. Subir el codigo de la rama `grupo25` y reiniciar el servicio. En produccion **no** se define
+5. Subir el codigo de la rama `main` de `backend-api-v2` y reiniciar el servicio. En produccion **no** se define
    `CORS_ORIGENES_EXTRA`.
 6. Comprobaciones de la seccion 4.
 7. Avisar a jefaturas y especialistas que **confirmen sus marcas del mes**: hasta que lo hagan, cuota,
