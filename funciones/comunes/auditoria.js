@@ -102,8 +102,16 @@ function registrar(req,res,modulo,accion,cuerpo){
     const d = desdeDonde(req);
     const c = cuerpo || {};
 
-    const documento = c.documento || c.ndocu ||
-                      (req.body && (req.body.ndocu || req.body.npedi || req.body.doc || req.body.ncoti)) || null;
+    const b = req.body || {};
+    const data = (c.data && typeof c.data === 'object') ? c.data : {};
+    /////sobre que documento: el numero de cotizacion o pedido; en las acciones del grupo 25, el de
+    /////la cotizacion ajustada, el codigo de la marca o la solicitud de ajuste
+    const documento = c.documento || c.ndocu || data.ndocu ||
+                      b.ndocu || b.npedi || b.doc || b.ncoti ||
+                      (typeof data.codmar === 'string' ? data.codmar : null) || b.codmar ||
+                      (b.id != null ? `solicitud ${b.id}` : null) || null;
+    /////el mensaje de error (si lo hubo) y un resumen de lo que se pidio
+    const detalle = [c.msg, resumenPedido(b)].filter(Boolean).join(' | ') || null;
 
     escribir(INSERTAR_ACCION,[
         {nombre:'codusu',     tipo:TYPES.VarChar, valor:recortar(u.identificador,12)},
@@ -119,8 +127,27 @@ function registrar(req,res,modulo,accion,cuerpo){
         {nombre:'sistema',    tipo:TYPES.VarChar, valor:d.sistema},
         {nombre:'navegador',  tipo:TYPES.VarChar, valor:d.navegador},
         {nombre:'ip',         tipo:TYPES.VarChar, valor:d.ip},
-        {nombre:'detalle',    tipo:TYPES.VarChar, valor:recortar(c.msg,400)}
+        {nombre:'detalle',    tipo:TYPES.VarChar, valor:recortar(detalle,400)}
     ]);
+}
+
+/////Lo que se pidio, en una linea, para las acciones que no dejan rastro propio: marcas que se
+/////tomaron o dieron, metas, precios ajustados, mensajes. Solo campos conocidos del cuerpo.
+function resumenPedido(b){
+    const partes = [];
+    const lista = (v)=>Array.isArray(v) ? v.map(x=>Array.isArray(x) ? x[0] : (x && typeof x === 'object' ? x.codmar : x)).join(',') : String(v);
+    if(b.marcas != null && b.marcas !== '') partes.push(`marcas ${lista(b.marcas)}`);
+    if(b.codusu != null) partes.push(`para ${b.codusu}`);
+    if(b.trabajada != null) partes.push(`trabajada ${b.trabajada}`);
+    const metas = ['monto','margen','margenPct','unidades'].filter(k=>k in b).map(k=>`${k} ${b[k]}`);
+    if(metas.length) partes.push(`meta ${metas.join(' ')}`);
+    if(Array.isArray(b.lineas) && b.lineas.length){
+        partes.push('lineas ' + b.lineas.map(l=>l ? `item ${l.item} precio ${l.precio}${l.cantidad != null ? ' cant ' + l.cantidad : ''}` : '').join('; '));
+    }
+    if(b.tipo != null && b.ndocu != null) partes.push(`tipo ${b.tipo}`);
+    if(b.mensaje) partes.push(`mensaje: ${b.mensaje}`);
+    if(b.observacion) partes.push(`observacion: ${b.observacion}`);
+    return partes.join(' · ');
 }
 
 /////Para el login, que no encaja en el middleware: no hay documento y si hay
