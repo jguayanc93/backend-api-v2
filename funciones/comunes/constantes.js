@@ -120,6 +120,16 @@ const CODVTA_CUOTA = ['01','08'];
 /////Cuota por marca: cuantos meses hacia atras se pueden consultar (solo lectura)
 const MESES_HISTORIA_CUOTA = 2;
 
+/////Grupo 34 (jefe de zona): solo estos usuarios (codusu) pueden entrar. 297 MOSCOSO DIEGO
+/////queda fuera hasta que se decida (2026-10-22). Para darle acceso, agregarlo aqui.
+const ACCESO_GRUPO_34 = ['126'];
+/////Avance de zona: cuantos meses hacia atras se pueden consultar
+const MESES_HISTORIA_ZONA = 2;
+/////Probabilidad: con cuantos meses anteriores se compara el mes en curso
+const MESES_COMPARAR_PROBABILIDAD = 3;
+/////Probabilidad: cuantos dias hacia atras se miran las ventas de cada vendedor
+const DIAS_HISTORIA_PROBABILIDAD = 90;
+
 module.exports = {
     IGV, CON_IGV,
     SKU_DESCUENTO, MARCA_BONIFICACION, MARCA_DESCUENTO, MARCA_FLETE,
@@ -127,5 +137,6 @@ module.exports = {
     COT, PROM, PROMDET,
     AMBITO, BENEFICIO, OTORGA, METRICA,
     normalizarFecha,
-    TIPOS_POR_GRUPO, MAX_MARCAS_REGISTRO, GLOSAS_COMPRA, ANNOS_KARDEX, CODVTA_CUOTA, MESES_HISTORIA_CUOTA
+    TIPOS_POR_GRUPO, MAX_MARCAS_REGISTRO, GLOSAS_COMPRA, ANNOS_KARDEX, CODVTA_CUOTA, MESES_HISTORIA_CUOTA,
+    ACCESO_GRUPO_34, MESES_HISTORIA_ZONA, MESES_COMPARAR_PROBABILIDAD, DIAS_HISTORIA_PROBABILIDAD
 };

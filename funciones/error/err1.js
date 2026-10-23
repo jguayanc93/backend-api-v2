@@ -273,6 +273,15 @@ const error_corrector=(res,mensaje)=>{
         case "mes no disponible":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y el anterior; anno y mes van juntos"})
             break;
+        case "usuario sin acceso":
+            res.status(403).json({"status":mensaje,"codigo":3,"msg":"este usuario todavia no tiene acceso a la intranet"})
+            break;
+        case "vendedor requerido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"falta codusu: el vendedor del grupo 20 que se quiere revisar"})
+            break;
+        case "vendedor desconocido":
+            res.status(404).json({"status":mensaje,"codigo":2,"msg":"ese codusu no es un vendedor del grupo 20"})
+            break;
         case "periodo invalido":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y los dos anteriores; anno y mes van juntos"})
             break;

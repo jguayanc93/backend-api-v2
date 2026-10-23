@@ -37,14 +37,15 @@ const grp25={
     [vendedormes[0]]:vendedormes[1],
     [coti[0]]:coti[1]
 };
+/////grupo 34 (jefe de zona, por ahora solo como jefe del grupo 20; decidido el 2026-10-22).
+/////pedido, listas, factura, promocion, cuota y programador salieron del menu; sus permisos en
+/////permisos.js no se tocaron, como en el grupo 25.
+const avance_zona=["avance","Avance de cuota de todos los vendedores del grupo 20"];
+const probabilidad_zona=["probabilidad","Probabilidad de que un vendedor llegue a su cuota, comparada con meses anteriores"];
 const grp34={
     [coti[0]]:coti[1],
-    [pedi[0]]:pedi[1],
-    [listas[0]]:listas[1],
-    [factura[0]]:factura[1],
-    [prom[0]]:prom[1],
-    [cuota[0]]:cuota[1],
-    [despachador[0]]:despachador[1]
+    [avance_zona[0]]:avance_zona[1],
+    [probabilidad_zona[0]]:probabilidad_zona[1]
 };
 // const grp39=[];
 

@@ -33,4 +33,6 @@ const ajuste = require('../ajuste/ajuste.js');
 
 const vendedormes = require('../vendedormes/vendedormes.js');
 
-module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido,marcas,cobertura,ajuste,vendedormes}
+const zona = require('../zona/zona.js');
+
+module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido,marcas,cobertura,ajuste,vendedormes,zona}

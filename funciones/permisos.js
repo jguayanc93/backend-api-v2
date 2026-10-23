@@ -94,6 +94,13 @@ const vendedormes={
     "ver":[25]
 }
 
+/////jefe de zona: avance de cuota y probabilidad de todo el grupo 20. Ademas del grupo, solo
+/////entran los usuarios de ACCESO_GRUPO_34 (funciones/comunes/constantes.js)
+const zona={
+    "avance":[34],
+    "probabilidad":[34]
+}
+
 const reporte={
     "stock":[25],
     "tiempo":[25],
@@ -116,5 +123,6 @@ permisos["marcas"]=marcas;
 permisos["cobertura"]=cobertura;
 permisos["ajuste"]=ajuste;
 permisos["vendedormes"]=vendedormes;
+permisos["zona"]=zona;
 
 module.exports=permisos;

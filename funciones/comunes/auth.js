@@ -4,6 +4,7 @@
 const jws = require('jws');
 const permisos = require('../permisos');
 const {error_corrector} = require('../error/err1');
+const {ACCESO_GRUPO_34} = require('./constantes');
 
 const SECRETO = process.env.JWT_SECRET || 'chistemas';
 
@@ -30,11 +31,19 @@ function exigirSesion(req,res,next){
     next();
 }
 
+/////En el grupo 34 no entra todo el grupo: solo los usuarios de ACCESO_GRUPO_34. El login ya
+/////rechaza a los demas; esto cubre una sesion abierta antes de que se le quitara el acceso.
+function usuarioConAcceso(grupo,codusu){
+    if(String(grupo).trim() !== '34') return true;
+    return ACCESO_GRUPO_34.includes(String(codusu == null ? '' : codusu).trim());
+}
+
 /////¿el grupo de este usuario tiene el permiso? Es la misma regla que aplica
 /////exigirPermiso, aparte para poder consultarla sin cortar la peticion: hay rutas que
 /////deciden el campo por el cuerpo, y pantallas que necesitan saber que pueden pintar.
 function tienePermiso(payload,modulo,accion){
     if(!payload) return false;
+    if(!usuarioConAcceso(payload.id_grupo,payload.identificador)) return false;
     const delModulo = permisos[modulo];
     const permitidos = delModulo ? delModulo[accion] : null;
     /////una lista vacia en la matriz significa "todavia sin restringir"
@@ -50,9 +59,10 @@ function exigirPermiso(modulo,accion){
         if(!payload) return error_corrector(res,"falsa galleta");
         req.usuario = payload;
 
+        if(!usuarioConAcceso(payload.id_grupo,payload.identificador)) return error_corrector(res,"usuario sin acceso");
         if(tienePermiso(payload,modulo,accion)) return next();
         return error_corrector(res,"sin permiso");
     };
 }
 
-module.exports={leerGalleta,exigirSesion,exigirPermiso,tienePermiso,SECRETO};
+module.exports={leerGalleta,exigirSesion,exigirPermiso,tienePermiso,usuarioConAcceso,SECRETO};

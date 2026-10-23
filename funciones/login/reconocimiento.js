@@ -10,11 +10,14 @@ let {jwtgenerator} = require('../../login/token')
 const {error_corrector} = require('../error/err1')
 /////quien entro, cuando y desde que dispositivo
 const {registrarSesion} = require('../comunes/auditoria')
+const {usuarioConAcceso} = require('../comunes/auth')
 
 async function logeo(req,res,next) {
     try{
         const primera_call= await obtenerpromesa_conexion();
         const segunda_call= await consulta1(primera_call,req,next);
+        /////en el grupo 34 solo entran los usuarios de ACCESO_GRUPO_34 (constantes.js)
+        if(!usuarioConAcceso(segunda_call[5],segunda_call[0])) throw "usuario sin acceso";
         const tercera_call= await consulta2(segunda_call);
 
         res.cookie('cdk',tercera_call,{

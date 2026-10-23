@@ -2,7 +2,7 @@ const {conn} = require('../../conexion/cnn')
 let {tipo_cambio} = require('../../querys/cotizacion/tipcambio');
 ///////ESPACIO PARA FUNCIONES GENERALES
 let modulos = require('../modulos')
-const {leerGalleta, tienePermiso} = require('../comunes/auth')
+const {leerGalleta, tienePermiso, usuarioConAcceso} = require('../comunes/auth')
 const {contarPendientes} = require('../../querys/ajuste/ajuste')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
@@ -16,6 +16,7 @@ async function grupos_modulos(req,res,next) {
     try{
         const payload = leerGalleta(req);
         if(!payload) return error_corrector(res,"falsa galleta");
+        if(!usuarioConAcceso(payload.id_grupo,payload.identificador)) return error_corrector(res,"usuario sin acceso");
 
         const permisos = modulos[`grupo${payload.id_grupo}`];
         /////el usuario si esta registrado: lo que falta es el mapa de modulos de su grupo
