@@ -36,8 +36,14 @@ async function prom_acoplar(req,res,next) {
         abierta=true;
 
         /////1) la cotizacion tiene que ser de este vendedor y seguir abierta
-        if(!await tx.validar(conexion, documento, req.usuario ? req.usuario.codigo : null)){
+        const moneda = await tx.validar(conexion, documento, req.usuario ? req.usuario.codigo : null);
+        if(moneda===null){
             return await abortar(conexion, res, "coti no modificable", ()=>abierta=false);
+        }
+        /////los descuentos del motor salen en dolares: en una cotizacion en soles
+        /////quedarian lineas en dos monedas. /readprom ya no las ofrece; esto es la segunda barrera.
+        if(moneda!=="D"){
+            return await abortar(conexion, res, "promocion en soles", ()=>abierta=false);
         }
         if(await enAjuste(conexion, documento)){
             return await abortar(conexion, res, "documento en ajuste", ()=>abierta=false);

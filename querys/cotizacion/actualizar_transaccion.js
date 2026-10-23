@@ -90,7 +90,7 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
         /////   flag y estado se comparan como texto: las anuladas tienen flag='*' y
         /////   convertirlo a numero revienta la consulta.
         const duenio = await ejecutar(conexion,
-            "select ndocu from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
+            "select rtrim(mone), tcam from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
             [{nombre:'coti',tipo:TYPES.VarChar,valor:documento},
              {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]);
 
@@ -104,6 +104,13 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
             conexion.close();
             return reject("documento en ajuste");
         }
+
+        /////la moneda y el tipo de cambio de cada linea son los de la cabecera, no los del
+        /////cuerpo: asi ninguna linea queda en otra moneda ni con otro tc. Los importes si
+        /////vienen del cuerpo, ya en la moneda del documento (docs/cotizacion-moneda.md).
+        const mone = duenio.rows[0][0].value;
+        const tcam = duenio.rows[0][1].value;
+        for(const linea of orden){ linea[4] = tcam; linea[5] = mone; }
 
         /////2) fuera el detalle viejo
         await ejecutarContando(conexion,

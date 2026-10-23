@@ -28,11 +28,12 @@ function revertir(c){ return new Promise((res)=>c.rollbackTransaction(()=>res())
 /////la cotizacion debe existir, ser del vendedor y seguir abierta.
 /////flag/estado se comparan como texto: las eliminadas tienen flag='*' y compararlo
 /////contra un numero revienta la conversion.
+/////Devuelve su moneda ('D' o 'S'), o null si no pasa.
 function validar(conexion, documento, codven){
     return ejecutar(conexion,
-        "select ndocu from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
+        "select rtrim(mone) from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
         [{nombre:'coti',tipo:TYPES.VarChar,valor:documento},
-         {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]).then(r=>r.rows.length>0);
+         {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]).then(r=>r.rows.length ? r.rows[0][0].value : null);
 }
 
 /////solo se aceptan lineas que sean realmente de promocion

@@ -75,6 +75,13 @@ const error_corrector=(res,mensaje)=>{
         case "tipcambio no registrado":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"no hay tipo de cambio registrado para hoy"})
             break;
+        case "moneda desconocida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la moneda debe ser D (dolares) o S (soles)"})
+            break;
+        /////a diferencia de "coti en soles" (/readprom, que solo lista), aqui se pedia escribir
+        case "promocion en soles":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"las promociones solo se aplican a cotizaciones en dolares; esta va en soles"})
+            break;
 
         case "correlativo inexistente":
             res.status(500).json({"status":mensaje,"codigo":1,"msg":"no se pudo obtener el correlativo de cotizacion"})

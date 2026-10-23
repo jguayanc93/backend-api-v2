@@ -27,9 +27,10 @@ let coti_cabecera = (resolve,reject,conexion,fecha,formato,info_cliente,atencion
     consulta.addParameter('mone',TYPES.Char,moneda);///SACAR DEL CLIENTE
     consulta.addParameter('tcam',TYPES.Float,fecha[0]);///CREAR LA CONSULTA
 
-    consulta.addParameter('tota',TYPES.Float,totalisado[1]);///SACAR DEL CLIENTE
-    consulta.addParameter('toti',TYPES.Float,(totalisado[1]*0.18).toFixed(2));///SACAR DEL CLIENTE
-    consulta.addParameter('totn',TYPES.Float,(totalisado[1]*1.18).toFixed(2));///SACAR DEL CLIENTE
+    /////ya redondeados con la regla del ERP (funciones/comunes/importes.js), en la moneda del documento
+    consulta.addParameter('tota',TYPES.Float,totalisado[1].tota);
+    consulta.addParameter('toti',TYPES.Float,totalisado[1].toti);
+    consulta.addParameter('totn',TYPES.Float,totalisado[1].totn);
     consulta.addParameter('flag',TYPES.Char,'0');
     consulta.addParameter('codven',TYPES.VarChar,info_cliente[3]);///SACAR DEL CLIENTE
     

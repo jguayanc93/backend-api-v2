@@ -16,7 +16,8 @@ const {en_transaccion} = require('../../querys/cotizacion/crear_transaccion')
 
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
 const {error_corrector} = require('../error/err1')
-const {IGV, CON_IGV} = require('../comunes/constantes')
+const {CON_IGV} = require('../comunes/constantes')
+const importes = require('../comunes/importes')
 
 async function new_creacion(req,res,next) {
     try{
@@ -47,14 +48,13 @@ async function new_creacion(req,res,next) {
         /////se devuelve el ndocu COMPLETO (con serie) porque el frontend lo necesita para
         /////mostrarlo y para encadenar /promocion/acoplar, que exige el numero con serie.
         /////Antes solo salia {"success":true} y ademas doble codificado.
-        const tota = Number(Number(segundo_call[1]).toFixed(2));
-        const toti = Number((tota * IGV).toFixed(2));
-        const totn = Number((tota * CON_IGV).toFixed(2));
-
+        /////Los totales van en la moneda del documento, que se devuelve junto con su tcam.
         res.status(200).json({"status":"ok","codigo":0,
                               "documento":sexta_call,
                               "lineas":Object.keys(segundo_call[0]).length,
-                              "totales":{"tota":tota,"toti":toti,"totn":totn}});
+                              "moneda":req.body["moneda"],
+                              "tcam":cuarta_call[0],
+                              "totales":segundo_call[1]});
     }
     catch(err){
         error_corrector(res,err);
@@ -104,16 +104,22 @@ function galleta_credencial(resolve,reject,req,next){
 
 /////Arma el detalle y el totalizado de la cabecera a partir de lo que manda el frontend.
 /////
-/////IMPORTANTE: los importes llegan SIEMPRE en dolares. El selector de moneda de la
-/////pantalla es de presentacion, y `moneda` solo se registra en la cabecera (columna mone).
-/////Antes habia una rama if(moneda=="S") que multiplicaba por el tipo de cambio, pero:
-/////  - estaba rota: recorria dataenviada["productos"] cuando dataenviada YA es productos,
-/////    asi que no iteraba nunca y creaba la cotizacion con total 0 y sin detalle;
-/////  - leia indices posicionales, el formato viejo de /create, no los campos con nombre.
-/////Convertir aqui duplicaria el importe de toda cotizacion hecha con soles en pantalla.
+/////Los precios del cuerpo llegan SIEMPRE en dolares, este como este el selector de la
+/////pantalla (acordado en docs/cotizacion-moneda.md). Con moneda "S" se graban en soles,
+/////como lo hace el ERP: preu y cost convertidos con el tcvta del dia y los importes
+/////recalculados desde ahi con la regla de funciones/comunes/importes.js. En soles NO se
+/////convierte preciosinIGV: es un importe ya redondeado y convertirlo desvia centimos.
+/////
+/////Hasta el 23/10/2026 la moneda solo se anotaba en la cabecera y los importes quedaban
+/////en dolares: la 098-00000069 se grabo como S/ 4 752.38 por algo que valia S/ 16 395.71.
 function calcular_moneda(resolve,reject,recuperada,tipocambio,dataenviada,moneda){
+    if(moneda!=="D" && moneda!=="S") return reject("moneda desconocida");
+
+    const tc=Number(tipocambio[0]);
+    if(moneda==="S" && !(tc>0)) return reject("tipcambio no registrado");
+
     let objtotal={};
-    let totalisado=0;
+    let totas=[];
 
     for(let indice in dataenviada){
         const codigo=dataenviada[indice]["codigo"];
@@ -121,21 +127,30 @@ function calcular_moneda(resolve,reject,recuperada,tipocambio,dataenviada,moneda
 
         /////descripcion, costo, codf y marca salen de la BD, no del cuerpo
         const descripcion=recuperada[codigo][4];
-        const costo=recuperada[codigo][6];
         const codf=recuperada[codigo][1];
         const marca=recuperada[codigo][2];
 
         const cantidad=dataenviada[indice]["cantidad"];
-        const preu=dataenviada[indice]["precioUnitario"];
         const dsct=dataenviada[indice]["descuento"];
-        const total_solo_item=dataenviada[indice]["preciosinIGV"];
-        const total_solo_item_conigv=Number((total_solo_item*CON_IGV).toFixed(2));
 
-        objtotal[codigo]=[codf,marca,descripcion,cantidad,preu,total_solo_item,dsct,total_solo_item_conigv,costo];
-        totalisado+=total_solo_item;
+        let preu, costo, tota, totn;
+        if(moneda==="S"){
+            preu=importes.aSoles(dataenviada[indice]["precioUnitario"],tc);
+            costo=importes.aSoles(recuperada[codigo][6],tc);
+            ({tota, totn}=importes.linea(preu,cantidad,dsct));
+        }
+        else{
+            preu=dataenviada[indice]["precioUnitario"];
+            costo=recuperada[codigo][6];
+            tota=dataenviada[indice]["preciosinIGV"];
+            totn=Number((tota*CON_IGV).toFixed(2));
+        }
+
+        objtotal[codigo]=[codf,marca,descripcion,cantidad,preu,tota,dsct,totn,costo];
+        totas.push(tota);
     }
 
-    resolve([objtotal,totalisado]);
+    resolve([objtotal,importes.cabecera(totas)]);
 }
 
 module.exports={new_creacion}
