@@ -42,7 +42,8 @@ const promocion={
     "leer":[],
     "update":[20,25,34],
     "delete cotizacion":[20,25,34],
-    "delete pedido":[20,25,34]
+    "delete pedido":[20,25,34],
+    "vigentes":[20]     ////que hay en promocion para ofrecer: lista y detalle (modulo "promovigentes" del menu)
 }
 
 const cuota={
@@ -108,11 +109,19 @@ const reporte={
     "tiempo":[25],
     "precio":[25],
     "guias":[25],
-    "marcas":[25]     ////la lista de marcas que puede consultar
+    "marcas":[25],    ////la lista de marcas que puede consultar
+    "listaprecios":[20]   ////lista de precios para el vendedor, por familias habilitadas (modulo "listaprecios" del menu)
 }
 
 
+/////¿A quien vender hoy?: los 3 clientes del dia del vendedor del grupo 20, cartera o cobertura
+/////(modulo "quienvender" del menu)
+const quienvender={
+    "ver":[20]
+}
+
 const permisos={}
+permisos["quienvender"]=quienvender;
 permisos["cotizacion"]=cotizacion;
 permisos["pedido"]=pedido;
 permisos["factura"]=factura;

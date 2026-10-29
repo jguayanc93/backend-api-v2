@@ -9,6 +9,11 @@ const reporte=["reporte","Permite sacar reportes de marcas"];
 const despachador=["programador","Permite entregar factura a almacen"];
 const marcas=["marcas","Elige y administra tus marcas del mes"];
 const ajuste=["ajuste","Pide al especialista de la marca que ajuste el precio de tus cotizaciones y pedidos"];
+/////"listaprecios" y no "reporte": esa clave es el menu de reportes por marca del grupo 25 (2026-10-28)
+const listaprecios=["listaprecios","Descarga la lista de precios de venta, sin IGV y con IGV"];
+/////"promovigentes" y no "promocion": esa clave es adjuntar y retirar promociones de una cotizacion (2026-10-29)
+const promovigentes=["promovigentes","Mira las promociones vigentes para ofrecer a tus clientes"];
+const quienvender=["quienvender","Los 3 clientes de hoy: 2 para reponer y 1 para llamar"];
 
 
 const grp20={
@@ -19,7 +24,12 @@ const grp20={
     [prom[0]]:prom[1],
     [cuota[0]]:cuota[1],
     [despachador[0]]:despachador[1],
-    [ajuste[0]]:ajuste[1]
+    [ajuste[0]]:ajuste[1],
+    /////apagada al salir (2026-10-29): el frontend aun no tiene la pantalla y todos los vendedores verian
+    /////una entrada que no lleva a nada. La ruta POST /reporte/listaprecios ya esta; se enciende quitando el comentario
+    // [listaprecios[0]]:listaprecios[1],
+    [promovigentes[0]]:promovigentes[1],
+    [quienvender[0]]:quienvender[1]
 }
 /////grupo 25: jefaturas y especialistas comparten el mismo menu (decidido el 2026-10-21; vendedor
 /////del mes se agrego el 2026-10-22).

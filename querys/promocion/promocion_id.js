@@ -1,12 +1,13 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {vigente} = require('./vigencia')
 
 let promocion_id = (resolve,reject,conexion,cuerpo)=>{
 
     let nprom= cuerpo.nprom;
 
     // let sq_sql="select idprom,nomprom,desprom,porvta,tipdsct,tipdsctoto,metrica from mst_promocion where estado=1 and idprom=@nprom";
-    let sq_sql="select idprom,nomprom,desprom,porvta,tipdsct,tipdsctoto,metrica,undvtaprom,lpdsct,idagrupa,prioagrupa from mst_promocion where estado=1 and idprom=@nprom";
+    let sq_sql="select idprom,nomprom,desprom,porvta,tipdsct,tipdsctoto,metrica,undvtaprom,lpdsct,idagrupa,prioagrupa from mst_promocion p where "+vigente('p')+" and idprom=@nprom";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();

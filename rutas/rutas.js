@@ -35,4 +35,6 @@ const vendedormes = require('../vendedormes/vendedormes.js');
 
 const zona = require('../zona/zona.js');
 
-module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido,marcas,cobertura,ajuste,vendedormes,zona}
+const quienvender = require('../hoy/hoy.js');
+
+module.exports={login,logout,vendedor,coti,cliente,producto,promocion,cuotas,lista,programador,factura,reporte,pedido,marcas,cobertura,ajuste,vendedormes,zona,quienvender}

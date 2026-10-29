@@ -56,6 +56,8 @@ app.use('/v1/vendedormes',ruta.vendedormes);
 
 app.use('/v1/zona',ruta.zona);
 
+app.use('/v1/quienvender',ruta.quienvender);
+
 /////manejador 404: cae aqui cualquier ruta no montada arriba
 app.use((req,res)=>{
     res.status(404).json({"status":"no encontrado","codigo":4,"msg":"la ruta solicitada no existe"});

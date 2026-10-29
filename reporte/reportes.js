@@ -11,6 +11,7 @@ const {vendedor_permisos} = require('../funciones/vendedor/redirigir_tipo')
 // const {grupos_modulos} = require('../funciones/vendedor/cobertura_modulos')
 const {coti_permisos} = require('../funciones/cotizacion/permisos')
 const {marcas_reporte, stock_reporte, tiempo_reporte, precios_reporte, guias_reporte} = require('../funciones/reportes/informes')
+const {listaprecios_grupo20} = require('../funciones/reportes/listaprecios')
 const {exigirPermiso} = require('../funciones/comunes/auth')
 
 router.use(express.json());
@@ -25,6 +26,10 @@ router.post('/marca/stock',exigirPermiso('reporte','stock'),stock_reporte)
 router.post('/marca/tiempo',exigirPermiso('reporte','tiempo'),tiempo_reporte)
 router.post('/marca/precios',exigirPermiso('reporte','precio'),precios_reporte)
 router.post('/marca/guias',exigirPermiso('reporte','guias'),guias_reporte)
+
+/////Lista de precios del grupo 20 (2026-10-28): por familias habilitadas y sin costo ni stock,
+/////porque puede llegar a los clientes. Contrato: docs/listaprecios-grupo20.md
+router.post('/listaprecios',exigirPermiso('reporte','listaprecios'),listaprecios_grupo20)
 
 /////Las rutas de la pantalla antigua (/marcas, /stoc, /precios, /tiempo: marca por texto y solo
 /////descarga) se retiraron el 2026-10-21. /tiempo ademas no veia las compras de 2026.

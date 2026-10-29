@@ -131,6 +131,15 @@ function registrar(req,res,modulo,accion,cuerpo){
     ]);
 }
 
+/////Para una descarga, que no responde con res.json y por eso no pasa por el middleware. Es la
+/////excepcion a "solo se auditan las acciones que escriben": la lista de precios del grupo 20 sale
+/////en Excel y puede llegar a clientes. Se llama a mano despues de responder y, como todo lo
+/////demas, nunca tumba la peticion.
+function auditarDescarga(req,res,modulo,accion,detalle){
+    try{ registrar(req,res,modulo,accion,{status:'ok', msg:detalle}); }
+    catch(e){ console.error("[auditoria]",e && e.message); }
+}
+
 /////Lo que se pidio, en una linea, para las acciones que no dejan rastro propio: marcas que se
 /////tomaron o dieron, metas, precios ajustados, mensajes. Solo campos conocidos del cuerpo.
 function resumenPedido(b){
@@ -172,4 +181,4 @@ function registrarSesion(req, evento, datos){
     ]);
 }
 
-module.exports={auditar, registrarSesion, desdeDonde};
+module.exports={auditar, auditarDescarga, registrarSesion, desdeDonde};

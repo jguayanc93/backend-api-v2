@@ -131,6 +131,45 @@ const MESES_COMPARAR_PROBABILIDAD = 3;
 /////Probabilidad: cuantos dias hacia atras se miran las ventas de cada vendedor
 const DIAS_HISTORIA_PROBABILIDAD = 90;
 
+/////Lista de precios del grupo 20: las familias (left(prd0101.codi,2)) que se pueden descargar.
+/////Decidido el 2026-10-28: 01, 02, 05, 06, 09, 11, 12 y 13. Quedan fuera 03 promociones y
+/////publicidad, 04 software, 10 conectividad, 00 varios, 07 contables, 08 servicios y 14 otras
+/////ventas. Para cambiarlas, editar esta lista.
+const FAMILIAS_LISTA_PRECIOS = ['01','02','05','06','09','11','12','13'];
+
+/////¿A quien vender hoy? (grupo 20; decidido el 2026-10-28 y 29). Cada dia, 3 clientes: 2 para reponer
+/////y 1 para llamar. Contrato: docs/quienvender-grupo20.md
+const SUGERIDOS_REPONER = 2;
+const SUGERIDOS_LLAMAR = 1;
+/////Los clientes de cada lista entre los que rota: los 10 de mas valor. Rotando por antiguedad (sale
+/////primero el que hace mas tiempo que no se sugiere), un cliente de reponer vuelve a salir a los 5
+/////dias (una semana laboral) y uno de llamar a los 10. Es el unico numero que hay que cambiar si el
+/////historial (tbl_api_quienvender) muestra que otro rinde mejor.
+const GRUPO_ROTACION_HOY = 10;
+/////un producto de reponer por debajo de este valor tipico en dolares no se sugiere: son lineas de
+/////obsequio o de 0,10 que no valen una llamada
+const VALOR_MINIMO_PRODUCTO_HOY = 0.5;
+/////dias sin comprar a partir de los cuales un cliente cuenta como "reactivar" (respaldo)
+const DIAS_REACTIVAR_HOY = 60;
+/////Clientes que son la propia empresa o fabricantes y no se sugieren nunca. Lista explicita y no un
+/////cruce de RUC con proveedores: 172 clientes con compras en 12 meses tambien figuran como
+/////proveedores, y entre ellos estan los mejores (Mesajil, Esquivel, Computel). La categoria 08 tampoco
+/////sirve: son 892 clientes comunes. Para excluir otro, agregar su codigo aqui.
+const CLIENTES_EXCLUIDOS_HOY = [
+    'C00904',   ////COMPUDISKETT S.R.L.
+    'C04807',   ////SAMSUNG ELECTRONICS PERU SAC
+    'C22556',   ////TCL ELECTRONICS PERU S.A.C.
+    'C14554',   ////HP PANAMA SALES AND DISTRIBUTION
+    'C14311',   ////BROTHER INTERNATIONAL DEL PERU
+    'C02388',   ////HEWLETT-PACKARD PERU
+    'C10771',   ////HP INC PERU
+    'C15802',   ////ASUS COMPUTER INTERNATIONAL
+    'C18290',   ////ASUS GLOBAL
+    'C18492',   ////ASUS PERU
+    'C10062',   ////ADATA TECHNOLOGY USA
+    'C11889'    ////CANON U.S.A.
+];
+
 module.exports = {
     IGV, CON_IGV,
     SKU_DESCUENTO, MARCA_BONIFICACION, MARCA_DESCUENTO, MARCA_FLETE,
@@ -139,5 +178,8 @@ module.exports = {
     AMBITO, BENEFICIO, OTORGA, METRICA,
     normalizarFecha,
     TIPOS_POR_GRUPO, MAX_MARCAS_REGISTRO, GLOSAS_COMPRA, ANNOS_KARDEX, CODVTA_CUOTA, MESES_HISTORIA_CUOTA,
-    ACCESO_GRUPO_34, MESES_HISTORIA_ZONA, MESES_COMPARAR_PROBABILIDAD, DIAS_HISTORIA_PROBABILIDAD
+    ACCESO_GRUPO_34, MESES_HISTORIA_ZONA, MESES_COMPARAR_PROBABILIDAD, DIAS_HISTORIA_PROBABILIDAD,
+    FAMILIAS_LISTA_PRECIOS,
+    SUGERIDOS_REPONER, SUGERIDOS_LLAMAR, GRUPO_ROTACION_HOY, VALOR_MINIMO_PRODUCTO_HOY, DIAS_REACTIVAR_HOY,
+    CLIENTES_EXCLUIDOS_HOY
 };

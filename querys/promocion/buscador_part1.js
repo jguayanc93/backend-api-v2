@@ -1,5 +1,6 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const {vigente} = require('./vigencia')
 
 let promo_buscador_simple = (resolve,reject,conexion,respuesta2)=>{
     let codi_recolector=[];
@@ -17,7 +18,7 @@ let promo_buscador_simple = (resolve,reject,conexion,respuesta2)=>{
 
     /////marcadores parametrizados: los codigos vienen del request, no se concatenan
     let marcadores=codi_recolector.map((_,i)=>"@c"+i).join(",");
-    let sp_sql="select a.idprom,b.codi from mst_promocion a join dtl_promocion_progra b on b.idprom=a.idprom where a.estado=1 AND b.codi in("+marcadores+") group by a.idprom,b.codi";
+    let sp_sql="select a.idprom,b.codi from mst_promocion a join dtl_promocion_progra b on b.idprom=a.idprom where "+vigente('a')+" AND b.codi in("+marcadores+") group by a.idprom,b.codi";
 
     let consulta = new Request(sp_sql,(err,rowCount,rows)=>{
         if(err){

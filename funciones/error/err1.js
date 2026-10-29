@@ -47,7 +47,12 @@ const error_corrector=(res,mensaje)=>{
             break;
 
         case "promocion no registrada":
-            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la promocion no existe o esta desabilitada"})
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la promocion no existe, esta desabilitada o ya vencio"})
+            break;
+
+        /////promociones vigentes del grupo 20 (/v1/promocion/vigentes/:idprom)
+        case "promocion no vigente":
+            res.status(404).json({"status":mensaje,"codigo":2,"msg":"la promocion no existe, esta apagada o ya vencio"})
             break;
 
         case "ninguna promocion":

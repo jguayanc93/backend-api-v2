@@ -13,6 +13,7 @@ const {prom_adjuntar} = require('../funciones/promocion/analisar')
 const {prom_acoplar} = require('../funciones/promocion/adjuntar')
 const {prom_remover} = require('../funciones/promocion/remover')
 //////////////
+const {vigentes_lista, vigentes_detalle} = require('../funciones/promocion/vigentes')
 const {prom_buscar_paso1} = require('../funciones/promocion/simple_buscador_paso1')
 const {prom_temporal_mejorada} = require('../funciones/promocion/simulacion_prom')
 
@@ -29,6 +30,11 @@ router.post('/recolector',prom_buscar_paso1)
 router.post('/detalle',prom_temporal_mejorada)
 router.post('/revisar',prom_buscar)
 router.post('/mostrar',prom_analisar,prom_adjuntar)
+
+/////Promociones vigentes del grupo 20 (2026-10-29): que hay en promocion para ofrecer. Solo lectura.
+/////Contrato: docs/promovigentes-grupo20.md
+router.get('/vigentes',exigirPermiso('promocion','vigentes'),vigentes_lista)
+router.get('/vigentes/:idprom',exigirPermiso('promocion','vigentes'),vigentes_detalle)
 
 /////escritura sobre la cotizacion: ademas se exige el permiso del grupo
 router.post('/acoplar',auditar('promocion','acoplar'),exigirPermiso('promocion','update'),prom_acoplar)
