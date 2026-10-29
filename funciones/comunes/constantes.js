@@ -123,8 +123,9 @@ const MESES_HISTORIA_CUOTA = 2;
 /////Grupo 34 (jefe de zona): solo estos usuarios (codusu) pueden entrar. 297 MOSCOSO DIEGO
 /////queda fuera hasta que se decida (2026-10-22). Para darle acceso, agregarlo aqui.
 const ACCESO_GRUPO_34 = ['126'];
-/////Avance de zona: cuantos meses hacia atras se pueden consultar
-const MESES_HISTORIA_ZONA = 2;
+/////Avance, cartera y cobertura de zona: cuantos meses hacia atras se pueden consultar
+/////(eran 2; 3 desde el 2026-10-24)
+const MESES_HISTORIA_ZONA = 3;
 /////Probabilidad: con cuantos meses anteriores se compara el mes en curso
 const MESES_COMPARAR_PROBABILIDAD = 3;
 /////Probabilidad: cuantos dias hacia atras se miran las ventas de cada vendedor

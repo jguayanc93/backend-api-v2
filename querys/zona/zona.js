@@ -2,36 +2,36 @@ const {TYPES} = require('../../conexion/cadena')
 const {ejecutar, texto, soloLectura} = require('../marcas/comun')
 const {leerPeriodo} = require('../marcas/ventas')
 const M = require('./modelo')
+const R = require('./regla')
 const {MESES_HISTORIA_ZONA, MESES_COMPARAR_PROBABILIDAD, DIAS_HISTORIA_PROBABILIDAD} = require('../../funciones/comunes/constantes')
 
 /////Jefe de zona (grupo 34): avance de cuota del grupo 20 y probabilidad de llegar a ella.
 /////Contrato: docs/zona-grupo34.md
 /////
 /////El avance es EL MISMO numero que cada vendedor ve en su pantalla de cuota
-/////(querys/cuota/cobertura.js y cartera.js), para que jefe y vendedor nunca discutan dos cifras:
-/////  - total de la factura (tota) en dolares; las notas de credito ya vienen en negativo
-/////  - sin anuladas (flag '*') ni transferencias gratuitas (codvta 04)
-/////  - COBERTURA cuenta lo que facturo el (codven_usu); CARTERA lo de su cartera (codven)
+/////(querys/cuota/cobertura.js y cartera.js), para que jefe y vendedor nunca discutan dos cifras.
+/////Que venta le cuenta a cada tipo de vendedor esta en querys/zona/regla.js.
 /////No es la regla de la cuota por marca del grupo 25 (sin IGV, solo codvta 01 y 08).
 
 const GRUPO_VENDEDORES = '20';
 
 const DIARIO = `
-select convert(char(10), f.fecha, 23), rtrim(f.codven), rtrim(f.codven_usu),
-       sum(case f.mone when 'D' then f.tota when 'S' then f.tota/nullif(f.tcam,0) end)
+select convert(char(10), f.fecha, 23), rtrim(f.codven), rtrim(f.codven_usu), sum(${R.MONTO('f')})
 from mst01fac f
-where f.fecha>=@desde and f.fecha<@hasta and f.flag<>'*' and f.codvta<>'04'`;
+where f.fecha>=@desde and f.fecha<@hasta and ${R.VALIDA('f')}`;
 
-/////Lo facturado por dia, por cartera y por vendedor que facturo: {cartera, cobertura}, cada
-/////uno {codven: {AAAA-MM-DD: monto}}. Con codven, solo lo de ese vendedor.
+/////Lo facturado por dia y por vendedor que facturo: {cartera, cobertura}, cada uno
+/////{codven: {AAAA-MM-DD: monto}}. En cartera solo entra lo facturado a clientes de cartera.
+/////Con codven, solo lo de ese vendedor.
 async function ventasDiarias(conexion, desde, hasta, codven){
     const parametros = [{nombre:'desde',tipo:TYPES.VarChar,valor:desde.replace(/-/g,'')},
                         {nombre:'hasta',tipo:TYPES.VarChar,valor:hasta.replace(/-/g,'')}];
     let filtro = '';
     if(codven){
-        filtro = ' and (f.codven=@codven or f.codven_usu=@codven)';
+        filtro = ' and f.codven_usu=@codven';
         parametros.push({nombre:'codven',tipo:TYPES.VarChar,valor:codven});
     }
+    const deCartera = await R.carteras(conexion);
     const r = await ejecutar(conexion, DIARIO + filtro + ' group by f.fecha, f.codven, f.codven_usu', parametros);
     const mapas = {cartera:{}, cobertura:{}};
     const sumar = (mapa, quien, dia, monto)=>{
@@ -40,12 +40,27 @@ async function ventasDiarias(conexion, desde, hasta, codven){
     };
     r.rows.forEach(f=>{
         const v = f.map(c=>c.value);
-        if(v[3] == null) return;
-        const dia = texto(v[0]), monto = Number(v[3]);
-        if(v[1]) sumar(mapas.cartera, texto(v[1]), dia, monto);
-        if(v[2]) sumar(mapas.cobertura, texto(v[2]), dia, monto);
+        if(v[3] == null || !v[2]) return;
+        const dia = texto(v[0]), monto = Number(v[3]), quien = texto(v[2]);
+        sumar(mapas.cobertura, quien, dia, monto);
+        if(deCartera.has(texto(v[1]))) sumar(mapas.cartera, quien, dia, monto);
     });
     return mapas;
+}
+
+/////Los reemplazos por vacaciones del mes, de los dos lados: a quien reemplazaron y a quien
+/////reemplaza cada uno. {reemplazadoPor: {codven: {...}}, reemplazaA: {codven: [...]}}
+async function reemplazosDelMes(conexion, inicio, fin){
+    const porDueno = await R.reemplazos(conexion, inicio, fin);
+    const duenos = Object.keys(porDueno);
+    const nombre = await R.nombres(conexion, duenos.concat(duenos.map(d=>porDueno[d].codven)));
+    const reemplazadoPor = {}, reemplazaA = {};
+    duenos.forEach(d=>{
+        const r = porDueno[d];
+        reemplazadoPor[d] = {codven: r.codven, nombre: nombre[r.codven] || null, venta: M.redondear(r.venta), porcentaje: r.porcentaje};
+        (reemplazaA[r.codven] = reemplazaA[r.codven] || []).push({codven: d, nombre: nombre[d] || null, venta: M.redondear(r.venta), porcentaje: r.porcentaje});
+    });
+    return {reemplazadoPor, reemplazaA};
 }
 function ventasDe(mapas, tipo, codven){
     return (tipo === 'CARTERA' ? mapas.cartera : mapas.cobertura)[codven] || {};
@@ -132,6 +147,7 @@ let zona_avance = (resolve,reject,conexion,galleta,cuerpo)=>{
         const desde = actual ? [M.sumarDias(t.hoy, -DIAS_HISTORIA_PROBABILIDAD), limitesPrevio.inicio].sort()[0] : limitesPrevio.inicio;
         const mapas = await ventasDiarias(conexion, desde, fin);
         const diasEmpresa = actual ? await diasConVentas(conexion, desde, M.sumarDias(t.hoy, 1)) : [];
+        const {reemplazadoPor, reemplazaA} = await reemplazosDelMes(conexion, inicio, fin);
 
         let ventasHasta = null;
         /////lo comun a los que tienen cuota y a los que no
@@ -140,7 +156,10 @@ let zona_avance = (resolve,reject,conexion,galleta,cuerpo)=>{
             Object.keys(ventas).forEach(d=>{ if(d >= inicio && d < fin && (!ventasHasta || d > ventasHasta)) ventasHasta = d; });
             const avance = sumarEntre(ventas, inicio, fin);
             const fila = {codusu: v.codusu, codven: v.codven, nombre: v.nombre, tipo: tipo || null,
-                          avance: M.redondear(avance), hoy: null, proyeccion: null};
+                          avance: M.redondear(avance), hoy: null, proyeccion: null,
+                          /////vacaciones: quien atendio su cartera este mes, y a quienes reemplaza el
+                          reemplazadoPor: reemplazadoPor[v.codven] || null,
+                          reemplazaA: reemplazaA[v.codven] || []};
             let p = null;
             if(actual){
                 fila.hoy = M.redondear(ventas[t.hoy] || 0);
@@ -264,4 +283,5 @@ let zona_probabilidad = (resolve,reject,conexion,galleta,cuerpo)=>{
     });
 }
 
-module.exports={zona_avance, zona_probabilidad}
+module.exports={zona_avance, zona_probabilidad,
+                ahora, limitesDe, mesesAtras, porcentaje, reemplazosDelMes, GRUPO_VENDEDORES}

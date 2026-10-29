@@ -1,6 +1,7 @@
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
 let {zona_avance, zona_probabilidad} = require('../../querys/zona/zona')
+let {zona_cartera, zona_cobertura} = require('../../querys/zona/clientes')
 ///////ESPACIO PARA FUNCIONES GENERALES
 const {leerGalleta} = require('../comunes/auth')
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
@@ -26,5 +27,7 @@ function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(re
 
 const avance_zona = responder(zona_avance);
 const probabilidad_zona = responder(zona_probabilidad);
+const cartera_zona = responder(zona_cartera);
+const cobertura_zona = responder(zona_cobertura);
 
-module.exports={avance_zona, probabilidad_zona}
+module.exports={avance_zona, probabilidad_zona, cartera_zona, cobertura_zona}

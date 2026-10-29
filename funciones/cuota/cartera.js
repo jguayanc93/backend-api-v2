@@ -71,7 +71,7 @@ function consulta8(conexion,galleta,objformato){ return new Promise((resolve,rej
 
 function consulta9(objformato,avance){ return new Promise((resolve,reject)=>calculo_avance_objetivo_especifico(resolve,reject,objformato,avance)) }
 
-function consulta10(conexion,codven,codusu,meta,avance){ return new Promise((resolve,reject)=>avance_detalle(resolve,reject,conexion,codven,codusu,meta,avance)) }
+function consulta10(conexion,codven,codusu,meta,avance){ return new Promise((resolve,reject)=>avance_detalle(resolve,reject,conexion,codven,codusu,meta,avance,'CARTERA')) }
 
 function calculo_avance_objetivo_especifico(resolve,reject,objformato,avance){
     ////termina de calcular el porcentaje de avance de su objetivo

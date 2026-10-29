@@ -98,7 +98,9 @@ const vendedormes={
 /////entran los usuarios de ACCESO_GRUPO_34 (funciones/comunes/constantes.js)
 const zona={
     "avance":[34],
-    "probabilidad":[34]
+    "probabilidad":[34],
+    "cartera":[34],      ////los clientes de un vendedor de cartera (modulo "clientes" del menu)
+    "cobertura":[34]     ////los clientes de un vendedor de cobertura (modulo "clientes" del menu)
 }
 
 const reporte={

@@ -1,9 +1,12 @@
 require('dotenv').config();
 const {Request,TYPES} = require('../../conexion/cadena')
+const R = require('../zona/regla')
 
+/////Lo que factura el a clientes de cartera, la regla de querys/zona/regla.js. Antes sumaba por
+/////codven (el dueño del cliente) y le contaba lo que otros facturaban a sus clientes.
 let cuota_avance_cartera = (resolve,reject,conexion,galleta,diferenciador)=>{
 
-    let sq_sql="select SUM(CASE mone WHEN 'D' THEN tota WHEN 'S' THEN tota/tcam END) from mst01fac where YEAR(fecha)=YEAR(GETDATE()) AND MONTH(fecha)=MONTH(GETDATE()) AND flag<>'*' AND codvta<>'04' AND codven=@codven";
+    let sq_sql=`select SUM(${R.MONTO('f')}) from mst01fac f where YEAR(f.fecha)=YEAR(GETDATE()) AND MONTH(f.fecha)=MONTH(GETDATE()) AND ${R.VALIDA('f')} AND f.codven_usu=@codven AND ${R.DE_CARTERA('f')}`;
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();

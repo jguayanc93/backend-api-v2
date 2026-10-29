@@ -42,10 +42,13 @@ const grp25={
 /////permisos.js no se tocaron, como en el grupo 25.
 const avance_zona=["avance","Avance de cuota de todos los vendedores del grupo 20"];
 const probabilidad_zona=["probabilidad","Probabilidad de que un vendedor llegue a su cuota, comparada con meses anteriores"];
+/////"clientes" y no "cobertura": esa clave ya es otro modulo en el menu del grupo 25 (2026-10-24)
+const clientes_zona=["clientes","Revisa la cartera o la cobertura de clientes de cada vendedor del grupo 20"];
 const grp34={
     [coti[0]]:coti[1],
     [avance_zona[0]]:avance_zona[1],
-    [probabilidad_zona[0]]:probabilidad_zona[1]
+    [probabilidad_zona[0]]:probabilidad_zona[1],
+    [clientes_zona[0]]:clientes_zona[1]
 };
 // const grp39=[];
 

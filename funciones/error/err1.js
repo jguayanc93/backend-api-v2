@@ -290,7 +290,10 @@ const error_corrector=(res,mensaje)=>{
             res.status(404).json({"status":mensaje,"codigo":2,"msg":"ese codusu no es un vendedor del grupo 20"})
             break;
         case "periodo invalido":
-            res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y los dos anteriores; anno y mes van juntos"})
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"solo se puede consultar el mes en curso y los anteriores que admite la ruta (2 en cuota y marcas, 3 en zona); anno y mes van juntos"})
+            break;
+        case "vendedor de otro tipo":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"ese vendedor no es de este tipo (CARTERA o COBERTURA) en el mes pedido: use la otra accion"})
             break;
         case "sin marcas en ese mes":
             res.status(200).json({"status":mensaje,"codigo":0,"msg":"no tuvo marcas asignadas en ese mes","marcas":{}})

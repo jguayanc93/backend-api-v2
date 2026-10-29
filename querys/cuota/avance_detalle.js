@@ -1,4 +1,5 @@
 const {Request,TYPES} = require('../../conexion/cadena');
+const R = require('../zona/regla');
 
 /////Los tres bloques que acompañan al avance de la cuota. Todos salen de datos que ya
 /////existen; ninguno necesita tablas nuevas.
@@ -36,12 +37,15 @@ const txt = (v)=> v==null ? '' : String(v).trim();
 /////OJO con los dos identificadores: la meta vive en tbl_api_vendedores_meta y se llave
 /////por codusu (numerico, 406); lo facturado vive en mst01fac y se llave por codven
 /////(V0336). No son el mismo campo, y cruzarlos mal devuelve cero sin avisar.
-const HISTORICO = `
+/////
+/////Las tres consultas reciben `filtro`: en un vendedor de cartera, solo las facturas a clientes
+/////de cartera, como su avance (querys/zona/regla.js). En cobertura va vacio.
+const HISTORICO = (filtro)=>`
 select top 3 CAST(m.anno AS varchar(4))+'-'+RIGHT('0'+CAST(m.mes AS varchar(2)),2) as periodo,
        CAST(m.monto AS decimal(14,2)) as meta,
        CAST(ISNULL((select SUM(CASE f.mone WHEN 'D' THEN f.tota WHEN 'S' THEN f.tota/NULLIF(f.tcam,0) END)
                     from mst01fac f
-                    where f.flag<>'*' and f.codvta<>'04' and f.codven_usu=@codven
+                    where f.flag<>'*' and f.codvta<>'04' and f.codven_usu=@codven${filtro}
                       and YEAR(f.fecha)=m.anno and MONTH(f.fecha)=m.mes),0) AS decimal(14,2)) as avance
 from tbl_api_vendedores_meta m
 where m.codven=@codusu and m.monto>0
@@ -51,12 +55,12 @@ order by m.anno desc, m.mes desc`;
 /////Lo facturado del mes separado de lo que restan las notas de credito. El avance de la
 /////cuota es venta NETA, asi que una devolucion grande baja el porcentaje sin que nada
 /////lo explique.
-const NOTAS = `
-select CAST(SUM(case when cdocu in('01','03') then (case mone when 'D' then tota when 'S' then tota/NULLIF(tcam,0) end) else 0 end) AS decimal(14,2)) as facturado,
-       CAST(SUM(case when cdocu='07'          then (case mone when 'D' then tota when 'S' then tota/NULLIF(tcam,0) end) else 0 end) AS decimal(14,2)) as notas
-from mst01fac
-where flag<>'*' and codvta<>'04' and codven_usu=@codven
-  and YEAR(fecha)=YEAR(GETDATE()) and MONTH(fecha)=MONTH(GETDATE())`;
+const NOTAS = (filtro)=>`
+select CAST(SUM(case when f.cdocu in('01','03') then (case f.mone when 'D' then f.tota when 'S' then f.tota/NULLIF(f.tcam,0) end) else 0 end) AS decimal(14,2)) as facturado,
+       CAST(SUM(case when f.cdocu='07'          then (case f.mone when 'D' then f.tota when 'S' then f.tota/NULLIF(f.tcam,0) end) else 0 end) AS decimal(14,2)) as notas
+from mst01fac f
+where f.flag<>'*' and f.codvta<>'04' and f.codven_usu=@codven${filtro}
+  and YEAR(f.fecha)=YEAR(GETDATE()) and MONTH(f.fecha)=MONTH(GETDATE())`;
 
 /////El mismo calculo de ritmo de compra que usa la ficha de cliente, pero sobre TODOS los
 /////clientes del vendedor y valorizado en dolares. Mediana y no promedio: una compra
@@ -64,11 +68,11 @@ where flag<>'*' and codvta<>'04' and codven_usu=@codven
 /////
 /////Arranca por la cabecera, que filtra por fecha con indice, y entra al detalle por su
 /////clave. Al reves costaba segundos en vez de milisegundos.
-const REPOSICION = `
+const REPOSICION = (filtro)=>`
 with docs as (
   select f.cdocu, f.ndocu, f.codcli, f.mone, f.tcam
   from mst01fac f
-  where f.fecha>=DATEADD(month,-${MESES_ATRAS},GETDATE()) and f.codven_usu=@codven
+  where f.fecha>=DATEADD(month,-${MESES_ATRAS},GETDATE()) and f.codven_usu=@codven${filtro}
     and f.cdocu in('01','03') and ISNULL(f.flag,'')<>'*'),
 compras as (
   select docs.codcli, d.codi, CAST(d.fecha as date) dia,
@@ -100,8 +104,9 @@ from vencidos v inner join mst01cli c on c.codcli=v.codcli
 group by v.codcli, c.nomcli
 order by 4 desc`;
 
-let avance_detalle = async (resolve,reject,conexion,codven,codusu,meta,avance)=>{
+let avance_detalle = async (resolve,reject,conexion,codven,codusu,meta,avance,tipo)=>{
     const salida = {falta:null, ritmo:null, notas:null, reposicion:null};
+    const filtro = tipo === 'CARTERA' ? ` and ${R.DE_CARTERA('f')}` : '';
 
     /////A) lo que falta, en dinero. No necesita consulta.
     const m = num(meta), a = num(avance);
@@ -114,7 +119,7 @@ let avance_detalle = async (resolve,reject,conexion,codven,codusu,meta,avance)=>
     const real = m > 0 ? Number(((a / m) * 100).toFixed(1)) : null;
 
     try{
-        const filas = await ejecutar(conexion, HISTORICO,
+        const filas = await ejecutar(conexion, HISTORICO(filtro),
             [{nombre:'codusu',tipo:TYPES.VarChar,valor:codusu},
              {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]);
 
@@ -138,7 +143,7 @@ let avance_detalle = async (resolve,reject,conexion,codven,codusu,meta,avance)=>
     }catch(err){ console.error("[avance_detalle historico]",err); }
 
     try{
-        const filas = await ejecutar(conexion, NOTAS,
+        const filas = await ejecutar(conexion, NOTAS(filtro),
             [{nombre:'codven',tipo:TYPES.VarChar,valor:codven}]);
         if(filas.length){
             const facturado = num(filas[0][0].value);
@@ -150,7 +155,7 @@ let avance_detalle = async (resolve,reject,conexion,codven,codusu,meta,avance)=>
     }catch(err){ console.error("[avance_detalle notas]",err); }
 
     try{
-        const filas = await ejecutar(conexion, REPOSICION,
+        const filas = await ejecutar(conexion, REPOSICION(filtro),
             [{nombre:'codven',tipo:TYPES.VarChar,valor:codven}]);
         salida.reposicion = {
             total: filas.length ? num(filas[0][4].value) : 0,

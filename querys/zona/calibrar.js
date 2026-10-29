@@ -6,6 +6,7 @@
 require('dotenv').config({quiet:true});
 const {Connection,Request,config,descripcion} = require('../../conexion/cadena');
 const M = require('./modelo');
+const R = require('./regla');
 const {DIAS_HISTORIA_PROBABILIDAD} = require('../../funciones/comunes/constantes');
 
 const CORTES = [10, 15, 20, 25];
@@ -39,9 +40,15 @@ conexion.on('connect', async (err)=>{
     const dias = (await leer(`select distinct convert(char(10),fecha,23) from mst01fac
         where fecha>=dateadd(month,-30,getdate()) and flag<>'*' order by 1`)).map(f=>f[0].trim());
 
+    /////la misma regla que querys/zona/regla.js: a cartera solo lo que facturo el a clientes de cartera
+    const deCartera = new Set((await leer(R.CARTERAS)).map(f=>f[0].trim()));
     const mapas = {cartera:{}, cobertura:{}};
     const sumar = (m,k,d,v)=>{ (m[k] = m[k] || {})[d] = (m[k][d] || 0) + v; };
-    diario.forEach(([d,cv,cu,v])=>{ if(v == null) return; d = d.trim(); if(cv) sumar(mapas.cartera,cv,d,v); if(cu) sumar(mapas.cobertura,cu,d,v); });
+    diario.forEach(([d,cv,cu,v])=>{
+        if(v == null || !cu) return; d = d.trim(); cu = cu.trim();
+        sumar(mapas.cobertura,cu,d,v);
+        if(cv && deCartera.has(cv.trim())) sumar(mapas.cartera,cu,d,v);
+    });
 
     const casos = [];
     metas.forEach(([codusu,codven,anno,mes,tipo,meta])=>{
