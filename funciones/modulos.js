@@ -25,9 +25,8 @@ const grp20={
     [cuota[0]]:cuota[1],
     [despachador[0]]:despachador[1],
     [ajuste[0]]:ajuste[1],
-    /////apagada al salir (2026-10-29): el frontend aun no tiene la pantalla y todos los vendedores verian
-    /////una entrada que no lleva a nada. La ruta POST /reporte/listaprecios ya esta; se enciende quitando el comentario
-    // [listaprecios[0]]:listaprecios[1],
+    /////encendida el 2026-10-30, cuando el frontend publico listaprecios.html
+    [listaprecios[0]]:listaprecios[1],
     [promovigentes[0]]:promovigentes[1],
     [quienvender[0]]:quienvender[1]
 }

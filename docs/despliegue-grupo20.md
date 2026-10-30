@@ -4,11 +4,11 @@ Que hay que hacer para subir lo que se agrego despues de la cotizacion en soles:
 las promociones vigentes y ¿A quien vender hoy? del grupo 20, mas los clientes de zona del grupo 34 con su
 regla de CARTERA. Para quien despliega, no para el frontend.
 
-**Backend y frontend salen el mismo dia, y el frontend primero.** Esta version agrega dos claves al menu de
-**todos** los vendedores del grupo 20 (`promovigentes` y `quienvender`) y una al del 126 (`clientes`).
-La clave **`listaprecios` sale apagada**: el frontend aun no tiene esa pantalla. Su ruta ya esta en el codigo y se
-enciende quitando el comentario de su linea en `funciones/modulos.js` cuando el frontend la suba. Una clave que el frontend no conoce se pinta como una entrada generica que lleva a una pagina que no
-existe (404). Si el frontend sube primero, no se ve nada hasta que el backend mande las claves.
+**Backend y frontend salen el mismo dia, y el frontend primero.** Esta version agrega tres claves al menu de
+**todos** los vendedores del grupo 20 (`listaprecios`, `promovigentes` y `quienvender`) y una al del 126 (`clientes`).
+`listaprecios` se encendio el 30/10/2026, cuando el frontend publico su pantalla (`listaprecios.html`). Una clave
+que el frontend no conoce se pinta como una entrada generica que lleva a una pagina que no existe (404). Si el
+frontend sube primero, no se ve nada hasta que el backend mande las claves.
 
 ---
 
@@ -18,7 +18,7 @@ existe (404). Si el frontend sube primero, no se ve nada hasta que el backend ma
 |---|---|---|---|---|
 | Clientes de zona | `clientes` | el 126 (grupo 34) | `GET /v1/zona/cartera`, `GET /v1/zona/cobertura` | [zona-grupo34.md](zona-grupo34.md) |
 | **Regla de CARTERA** y tercer mes | — | **todos los vendedores de cartera** y el 126 | avance, probabilidad y la cuota propia | [zona-grupo34.md](zona-grupo34.md) §2 y §10 |
-| Lista de precios (**clave apagada**) | `listaprecios` | nadie todavia; la ruta responde al grupo 20 | `POST /v1/reporte/listaprecios` | [listaprecios-grupo20.md](listaprecios-grupo20.md) |
+| Lista de precios | `listaprecios` | grupo 20 | `POST /v1/reporte/listaprecios` | [listaprecios-grupo20.md](listaprecios-grupo20.md) |
 | Promociones vigentes | `promovigentes` | grupo 20 | `GET /v1/promocion/vigentes` y `/vigentes/:idprom` | [promovigentes-grupo20.md](promovigentes-grupo20.md) |
 | **Fechas en el motor de cotizacion** | — | **todos los que cotizan** | `/promocion/recolector`, `/revisar`, `/detalle`, `/mostrar` y `/acoplar` | [promovigentes-grupo20.md](promovigentes-grupo20.md) §4 |
 | ¿A quien vender hoy? | `quienvender` | grupo 20 | `GET /v1/quienvender` | [quienvender-grupo20.md](quienvender-grupo20.md) |
@@ -84,7 +84,7 @@ Con una cuenta de cada tipo (en prueba, las de la seccion 5):
 | comprobar | cuenta | esperado |
 |---|---|---|
 | El servicio arranca y dice la base correcta | — | `servicio levantado ... base: bdnava08` (o `bdnava01`) |
-| El menu del grupo 20 | vendedor | sus modulos de siempre mas `promovigentes` y `quienvender` (sin `listaprecios`) |
+| El menu del grupo 20 | vendedor | sus modulos de siempre mas `listaprecios`, `promovigentes` y `quienvender` |
 | El menu del grupo 34 | el 126 | `cotizacion, avance, probabilidad, clientes` |
 | `GET /v1/promocion/vigentes` | vendedor | `200`; en produccion unas 40 promociones, en bdnava08 20 |
 | `GET /v1/promocion/vigentes/abc` | vendedor | `404 promocion no vigente` |
