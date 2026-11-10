@@ -135,7 +135,10 @@ async function costosYStock(conexion, lineasDoc, moneda, tcam){
              from prd01${alm} where codi in (${lista})`, parametros);
         r.rows.forEach(f=>{
             const usd = Number(f[1].value || 0);
-            resultado[`${alm}|${texto(f[0].value)}`] = {costo: redondear(moneda === 'S' ? usd * tcam : usd, 4), stock: f[2].value};
+            /////un costo de 0 es un costo sin cargar en ese almacen, no un producto gratis: se trata como
+            /////desconocido, si no el minimo quedaria en 0 y se aceptaria cualquier precio
+            const costo = usd > 0 ? redondear(moneda === 'S' ? usd * tcam : usd, 4) : null;
+            resultado[`${alm}|${texto(f[0].value)}`] = {costo: costo, stock: f[2].value};
         });
     }
     return {

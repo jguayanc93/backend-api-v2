@@ -271,7 +271,7 @@ const error_corrector=(res,mensaje)=>{
             res.status(409).json({"status":mensaje,"codigo":3,"msg":"el precio no puede quedar por debajo del costo del producto"})
             break;
         case "costo desconocido":
-            res.status(409).json({"status":mensaje,"codigo":3,"msg":"no se encontro el costo del producto en el almacen de la linea"})
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el producto no tiene costo cargado en el almacen de la linea (no existe o es 0): no se puede ajustar su precio"})
             break;
         case "cantidad invalida":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"la cantidad debe ser un numero entero de 1 o mas"})
