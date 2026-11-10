@@ -1,6 +1,7 @@
 const {conn} = require('../../conexion/cnn')
 /////////espacio para la llamada de los querys
 let {ajuste_previa, ajuste_enviar, ajuste_enviadas, ajuste_recibidas, ajuste_solicitud, ajuste_confirmar, ajuste_rechazar} = require('../../querys/ajuste/ajuste')
+let {directo_documentos, directo_documento, directo_aplicar, directo_vendedores, directo_asignar, ajuste_asignados} = require('../../querys/ajuste/directo')
 ///////ESPACIO PARA FUNCIONES GENERALES
 const {leerGalleta, tienePermiso} = require('../comunes/auth')
 const permisos = require('../permisos')
@@ -24,7 +25,8 @@ function manejador(consulta){
 }
 
 /////GET /ajuste: las acciones que su grupo puede usar, con la misma forma que el resto de
-/////modulos ({"accesos":[...]}, doble codificado). Grupo 20: enviar y enviadas; grupo 25: recibidas.
+/////modulos ({"accesos":[...]}, doble codificado). Grupo 20: enviar y enviadas; grupo 25: recibidas,
+/////directo y asignados.
 function accesos_ajuste(req,res,next){
     const payload = leerGalleta(req);
     if(!payload) return error_corrector(res,"falsa galleta");
@@ -42,5 +44,11 @@ module.exports={
     recibidas_ajuste: manejador(ajuste_recibidas),
     solicitud_ajuste: manejador(ajuste_solicitud),
     confirmar_ajuste: manejador(ajuste_confirmar),
-    rechazar_ajuste: manejador(ajuste_rechazar)
+    rechazar_ajuste: manejador(ajuste_rechazar),
+    directo_documentos: manejador(directo_documentos),
+    directo_documento: manejador(directo_documento),
+    directo_aplicar: manejador(directo_aplicar),
+    directo_vendedores: manejador(directo_vendedores),
+    directo_asignar: manejador(directo_asignar),
+    asignados_ajuste: manejador(ajuste_asignados)
 }

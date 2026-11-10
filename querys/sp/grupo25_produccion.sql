@@ -1,7 +1,7 @@
 /*
     Grupo 25 - tablas y datos iniciales para una base nueva (produccion)
 
-    Crea las 7 tablas de los modulos del grupo 25 y carga lo minimo para que funcionen:
+    Crea las 10 tablas de los modulos del grupo 25 y carga lo minimo para que funcionen:
     el catalogo de marcas (con su familia) y las jefaturas. bdnava08 ya lo tiene.
 
     Se puede correr mas de una vez: cada paso comprueba si ya esta hecho.
@@ -128,6 +128,57 @@ IF OBJECT_ID('dbo.tbl01_api_ajuste_detalle') IS NULL
         CONSTRAINT pk_ajuste_detalle PRIMARY KEY (id_solicitud, item)
     );
 
+-- ajuste directo: cada vez que el jefe de marca aplica precios a su propio documento
+IF OBJECT_ID('dbo.tbl01_api_ajuste_directo') IS NULL
+BEGIN
+    CREATE TABLE dbo.tbl01_api_ajuste_directo (
+        id            int IDENTITY(1,1) PRIMARY KEY,
+        tipo          char(3)       NOT NULL,
+        cdocu         char(2)       NOT NULL,
+        ndocu         char(12)      NOT NULL,
+        codusu        varchar(6)    NOT NULL,
+        observacion   varchar(300)  NULL,
+        promociones   int           NOT NULL,
+        totn_antes    decimal(14,2) NOT NULL,
+        totn_despues  decimal(14,2) NOT NULL,
+        fecreg        datetime      NOT NULL DEFAULT GETDATE()
+    );
+    CREATE INDEX ix_ajuste_directo_doc ON dbo.tbl01_api_ajuste_directo(cdocu, ndocu);
+END
+
+-- ajuste directo: las lineas, con su antes y su despues
+IF OBJECT_ID('dbo.tbl01_api_ajuste_directo_detalle') IS NULL
+    CREATE TABLE dbo.tbl01_api_ajuste_directo_detalle (
+        id_ajuste     int           NOT NULL,
+        item          int           NOT NULL,
+        codi          varchar(11)   NOT NULL,
+        codmar        char(4)       NOT NULL,
+        cant          decimal(12,3) NOT NULL,
+        preu_antes    decimal(14,4) NOT NULL,
+        dsct_antes    decimal(6,2)  NOT NULL,
+        preu_despues  decimal(14,4) NOT NULL,
+        costo         decimal(14,4) NOT NULL,
+        CONSTRAINT pk_ajuste_directo_detalle PRIMARY KEY (id_ajuste, item)
+    );
+
+-- documentos del grupo 25 asignados a un vendedor del grupo 20
+IF OBJECT_ID('dbo.tbl01_api_documento_asignado') IS NULL
+BEGIN
+    CREATE TABLE dbo.tbl01_api_documento_asignado (
+        id            int IDENTITY(1,1) PRIMARY KEY,
+        tipo          char(3)       NOT NULL,
+        cdocu         char(2)       NOT NULL,
+        ndocu         char(12)      NOT NULL,
+        codusu_asigna varchar(6)    NOT NULL,
+        codven_antes  varchar(10)   NOT NULL,
+        codven_nuevo  varchar(10)   NOT NULL,
+        totn          decimal(14,2) NOT NULL,
+        fecreg        datetime      NOT NULL DEFAULT GETDATE()
+    );
+    CREATE INDEX ix_doc_asignado_asigna ON dbo.tbl01_api_documento_asignado(codusu_asigna, fecreg);
+    CREATE INDEX ix_doc_asignado_doc ON dbo.tbl01_api_documento_asignado(cdocu, ndocu);
+END
+
 ----------------------------------------------------------------------------------------
 ---- 2) catalogo de marcas: cada marca con productos vigentes en las familias comerciales,
 ----    en la familia donde tiene mas productos. Solo agrega las que falten.
@@ -175,8 +226,9 @@ COMMIT;
 SELECT name AS tabla FROM sys.tables
 WHERE name IN ('tbl01_api_jefatura_familia','tbl01_api_marcas_estado','tbl01_api_marcas_asignadas',
                'tbl01_api_marcas_confirmadas','tbl01_api_marcas_meta',
-               'tbl01_api_ajuste_solicitud','tbl01_api_ajuste_detalle')
-ORDER BY name;                                                        -- deben ser 7
+               'tbl01_api_ajuste_solicitud','tbl01_api_ajuste_detalle',
+               'tbl01_api_ajuste_directo','tbl01_api_ajuste_directo_detalle','tbl01_api_documento_asignado')
+ORDER BY name;                                                        -- deben ser 10
 
 SELECT e.codfam, f.nomfam, COUNT(*) marcas, SUM(CASE WHEN e.trabajada=1 THEN 1 ELSE 0 END) trabajadas,
        MAX(RTRIM(u.nomusu)) jefatura

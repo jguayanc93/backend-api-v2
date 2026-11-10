@@ -147,6 +147,7 @@ function resumenPedido(b){
     const lista = (v)=>Array.isArray(v) ? v.map(x=>Array.isArray(x) ? x[0] : (x && typeof x === 'object' ? x.codmar : x)).join(',') : String(v);
     if(b.marcas != null && b.marcas !== '') partes.push(`marcas ${lista(b.marcas)}`);
     if(b.codusu != null) partes.push(`para ${b.codusu}`);
+    if(b.codven != null) partes.push(`asignado a ${b.codven}`);
     if(b.trabajada != null) partes.push(`trabajada ${b.trabajada}`);
     const metas = ['monto','margen','margenPct','unidades'].filter(k=>k in b).map(k=>`${k} ${b[k]}`);
     if(metas.length) partes.push(`meta ${metas.join(' ')}`);

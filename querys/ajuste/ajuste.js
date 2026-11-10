@@ -172,6 +172,48 @@ async function responsables(conexion, codigos){
 
 function leerTipo(v){ const t = String(v == null ? '' : v).trim().toUpperCase(); return TIPOS[t] ? t : null; }
 
+/////Escribe un ajuste ya validado en el documento. Lo comparten confirmar y el ajuste directo.
+/////cambios: [{linea, precio, cantidad, costo}]. Devuelve {promociones, totales}.
+/////  - en cada linea: precio nuevo, descuento en 0, cantidad y el costo actual. Una linea por
+/////    update: los triggers del ERP sobre el detalle leen una sola fila de lo modificado.
+/////  - fuera TODAS las promociones del documento (tambien el flete), y su registro en el ERP.
+/////  - la cabecera sale del detalle: IGV solo de las lineas afectas.
+async function escribirAjuste(conexion, tipo, ndocu, cambios){
+    const t = TIPOS[tipo];
+    const docParams = [{nombre:'cdocu',tipo:TYPES.Char,valor:t.cdocu},{nombre:'ndocu',tipo:TYPES.VarChar,valor:ndocu}];
+
+    for(const c of cambios){
+        const tota = redondear(c.cantidad * c.precio);
+        const totn = c.linea.aigv === 'N' ? tota : redondear(tota * (1 + IGV));
+        await ejecutar(conexion,
+            `update ${t.dtl} set preu=@preu, dsct=0, cant=@cant, tota=@tota, totn=@totn, cost=@cost
+             where cdocu=@cdocu and ndocu=@ndocu and item=@item`,
+            [{nombre:'preu',tipo:TYPES.Float,valor:c.precio},{nombre:'cant',tipo:TYPES.Float,valor:c.cantidad},
+             {nombre:'tota',tipo:TYPES.Float,valor:tota},{nombre:'totn',tipo:TYPES.Float,valor:totn},
+             {nombre:'cost',tipo:TYPES.Float,valor:c.costo},{nombre:'item',tipo:TYPES.Int,valor:c.linea.item}].concat(docParams));
+    }
+
+    const promociones = await contarPromociones(conexion, tipo, ndocu);
+    if(promociones > 0){
+        await ejecutar(conexion, `delete d from ${t.dtl} d where d.cdocu=@cdocu and d.ndocu=@ndocu and ${ES_PROMOCION}`,
+            docParams.concat(PARAMS_PROMO));
+    }
+    await ejecutar(conexion, "delete from dtl_promocion_venta where cdocu=@cdocu and ndocu=@ndocu", docParams);
+
+    const suma = await ejecutar(conexion,
+        `select isnull(sum(tota),0), isnull(sum(case when aigv='N' then 0 else tota end),0)
+         from ${t.dtl} where cdocu=@cdocu and ndocu=@ndocu`, docParams);
+    const tota = redondear(suma.rows[0][0].value);
+    const toti = redondear(suma.rows[0][1].value * IGV);
+    const totn = redondear(tota + toti);
+    await ejecutar(conexion,
+        `update ${t.mst} set tota=@tota, toti=@toti, totn=@totn where cdocu=@cdocu and ndocu=@ndocu`,
+        [{nombre:'tota',tipo:TYPES.Float,valor:tota},{nombre:'toti',tipo:TYPES.Float,valor:toti},
+         {nombre:'totn',tipo:TYPES.Float,valor:totn}].concat(docParams));
+
+    return {promociones, totales:{tota, toti, totn}};
+}
+
 /////Lo comun a la vista previa y al envio: valida el documento y reparte sus lineas entre los
 /////responsables. Devuelve {rechazo} o {doc, grupos, sinResponsable, promociones}.
 async function repartir(conexion, galleta, cuerpo, bloquear){
@@ -492,17 +534,11 @@ let ajuste_confirmar = (resolve,reject,conexion,galleta,cuerpo)=>{
             cambios.push({linea:l, precio:enCentimos, cantidad:cantidad, costo:costo});
         }
 
-        /////2) las lineas: precio nuevo, descuento en 0, cantidad nueva, costo actual
+        /////2) el documento: lineas, promociones y cabecera
+        const escrito = await escribirAjuste(conexion, sol.tipo, sol.ndocu, cambios);
+
+        /////3) el detalle de la solicitud
         for(const c of cambios){
-            const tota = redondear(c.cantidad * c.precio);
-            const totn = c.linea.aigv === 'N' ? tota : redondear(tota * (1 + IGV));
-            await ejecutar(conexion,
-                `update ${t.dtl} set preu=@preu, dsct=0, cant=@cant, tota=@tota, totn=@totn, cost=@cost
-                 where cdocu=@cdocu and ndocu=@ndocu and item=@item`,
-                [{nombre:'preu',tipo:TYPES.Float,valor:c.precio},{nombre:'cant',tipo:TYPES.Float,valor:c.cantidad},
-                 {nombre:'tota',tipo:TYPES.Float,valor:tota},{nombre:'totn',tipo:TYPES.Float,valor:totn},
-                 {nombre:'cost',tipo:TYPES.Float,valor:c.costo},{nombre:'cdocu',tipo:TYPES.Char,valor:t.cdocu},
-                 {nombre:'ndocu',tipo:TYPES.VarChar,valor:sol.ndocu},{nombre:'item',tipo:TYPES.Int,valor:c.linea.item}]);
             await ejecutar(conexion,
                 `update tbl01_api_ajuste_detalle set cant_despues=@cant, preu_despues=@preu, costo=@cost
                  where id_solicitud=@id and item=@item`,
@@ -512,28 +548,7 @@ let ajuste_confirmar = (resolve,reject,conexion,galleta,cuerpo)=>{
                  {nombre:'id',tipo:TYPES.Int,valor:id},{nombre:'item',tipo:TYPES.Int,valor:c.linea.item}]);
         }
 
-        /////3) fuera todas las promociones del documento, tambien su registro en el ERP
-        const docParams = [{nombre:'cdocu',tipo:TYPES.Char,valor:t.cdocu},{nombre:'ndocu',tipo:TYPES.VarChar,valor:sol.ndocu}];
-        const promos = await contarPromociones(conexion, sol.tipo, sol.ndocu);
-        if(promos > 0){
-            await ejecutar(conexion, `delete d from ${t.dtl} d where d.cdocu=@cdocu and d.ndocu=@ndocu and ${ES_PROMOCION}`,
-                docParams.concat(PARAMS_PROMO));
-        }
-        await ejecutar(conexion, "delete from dtl_promocion_venta where cdocu=@cdocu and ndocu=@ndocu", docParams);
-
-        /////4) la cabecera sale del detalle: IGV solo de las lineas afectas
-        const suma = await ejecutar(conexion,
-            `select isnull(sum(tota),0), isnull(sum(case when aigv='N' then 0 else tota end),0)
-             from ${t.dtl} where cdocu=@cdocu and ndocu=@ndocu`, docParams);
-        const tota = redondear(suma.rows[0][0].value);
-        const toti = redondear(suma.rows[0][1].value * IGV);
-        const totn = redondear(tota + toti);
-        await ejecutar(conexion,
-            `update ${t.mst} set tota=@tota, toti=@toti, totn=@totn where cdocu=@cdocu and ndocu=@ndocu`,
-            [{nombre:'tota',tipo:TYPES.Float,valor:tota},{nombre:'toti',tipo:TYPES.Float,valor:toti},
-             {nombre:'totn',tipo:TYPES.Float,valor:totn}].concat(docParams));
-
-        /////5) la solicitud
+        /////4) la solicitud
         await ejecutar(conexion,
             "update tbl01_api_ajuste_solicitud set estado='CONFIRMADA', observacion=@obs, fecrespuesta=getdate() where id=@id",
             [{nombre:'obs',tipo:TYPES.VarChar,valor:recortar(cuerpo.observacion)},{nombre:'id',tipo:TYPES.Int,valor:id}]);
@@ -542,8 +557,8 @@ let ajuste_confirmar = (resolve,reject,conexion,galleta,cuerpo)=>{
                 lineas: cambios.map(c=>({item:c.linea.item, codi:c.linea.codi,
                                          antes:{cantidad:c.linea.cantidad, precio:c.linea.precio, dsct:c.linea.dsct},
                                          despues:{cantidad:c.cantidad, precio:c.precio, dsct:0, costo:c.costo}})),
-                promocionesQuitadas: promos,
-                totales: {tota:tota, toti:toti, totn:totn}};
+                promocionesQuitadas: escrito.promociones,
+                totales: escrito.totales};
     });
 }
 
@@ -582,4 +597,7 @@ async function contarPendientes(conexion, codusu, grupo){
     return r.rows[0][0].value;
 }
 
-module.exports={contarPendientes, ajuste_previa, ajuste_enviar, ajuste_enviadas, ajuste_recibidas, ajuste_solicitud, ajuste_confirmar, ajuste_rechazar, enAjuste}
+module.exports={contarPendientes, ajuste_previa, ajuste_enviar, ajuste_enviadas, ajuste_recibidas, ajuste_solicitud, ajuste_confirmar, ajuste_rechazar, enAjuste,
+                /////piezas que reutiliza el ajuste directo (querys/ajuste/directo.js)
+                TIPOS, ES_PROMOCION, PARAMS_PROMO, minimoDe, redondear, recortar, numero, leerTipo, leerFechas,
+                lineas, contarPromociones, costosYStock, responsables, escribirAjuste}

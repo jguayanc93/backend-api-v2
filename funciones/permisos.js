@@ -87,7 +87,9 @@ const cobertura={
 const ajuste={
     "enviar":[20],       ////enviar y ver la vista previa
     "enviadas":[20],
-    "recibidas":[25]     ////recibidas, abrir, confirmar y rechazar
+    "recibidas":[25],    ////recibidas, abrir, confirmar y rechazar
+    "directo":[25],      ////ajustar el precio de sus propios documentos y asignarlos a un vendedor del grupo 20
+    "asignados":[25]     ////historial de lo que asigno
 }
 
 /////vendedor del mes: los 3 vendedores del grupo 20 que mas venden cada marca

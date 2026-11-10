@@ -244,7 +244,13 @@ const error_corrector=(res,mensaje)=>{
             res.status(403).json({"status":mensaje,"codigo":3,"msg":"el documento no existe o no es tuyo"})
             break;
         case "documento no ajustable":
-            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento ya no se puede ajustar: la cotizacion ya fue aprobada, o el pedido ya fue aprobado, facturado o anulado"})
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento ya no se puede ajustar: ya avanzo (aprobado, convertido en pedido, facturado o anulado, segun el caso)"})
+            break;
+        case "documento no asignable":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento ya no se puede asignar: ya se convirtio, se facturo, se anulo o fue desaprobado"})
+            break;
+        case "vendedor invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el vendedor no existe, no es del grupo 20 o no esta activo"})
             break;
         case "documento en ajuste":
             res.status(409).json({"status":mensaje,"codigo":3,"msg":"el documento esta en ajuste de precio: no se puede modificar hasta que respondan o venza la solicitud"})
@@ -262,7 +268,7 @@ const error_corrector=(res,mensaje)=>{
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"no se envio ninguna linea para ajustar; si no hay cambios, rechaza la solicitud"})
             break;
         case "linea ajena":
-            res.status(400).json({"status":mensaje,"codigo":2,"msg":"una de las lineas no es de esta solicitud, o viene repetida"})
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"una de las lineas no es de esta solicitud o de tus marcas, o viene repetida"})
             break;
         case "precio invalido":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"el precio debe ser un numero mayor que cero"})
@@ -277,7 +283,7 @@ const error_corrector=(res,mensaje)=>{
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"la cantidad debe ser un numero entero de 1 o mas"})
             break;
         case "cantidad no ajustable":
-            res.status(400).json({"status":mensaje,"codigo":2,"msg":"en un pedido solo se ajusta el precio, no la cantidad"})
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"aqui solo se ajusta el precio, no la cantidad (en pedidos y en el ajuste directo)"})
             break;
         case "observacion requerida":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"al rechazar hay que explicar por que en la observacion"})
