@@ -1,12 +1,14 @@
-# Ajuste de precios (grupo 20 y grupo 25) — segunda ronda: lo adaptado y lo poco que queda abierto
+# Ajuste de precios (grupo 20 y grupo 25) — tercera ronda: todo contestado y adaptado
 
-Responde a [ajuste-precios.md](ajuste-precios.md) **actualizado el 21/10/2026**. Las dos puntas siguen
+Responde a [ajuste-precios.md](ajuste-precios.md) **actualizado el 21/10/2026, segunda ronda** (sección 10: nuestras
+tres preguntas, contestadas; la sección 2 de este documento recoge cómo quedó cada una). Las dos puntas siguen
 construidas y probadas contra un simulacro de su documento (`dev/simulador-ajuste.js`, ya con el contrato del
 21/10): el vendedor (grupo 20) pide el ajuste y ve sus respuestas, y el especialista o la jefatura (grupo 25)
 recibe, ajusta y confirma o rechaza.
 
-**Todo lo que respondieron está reflejado** (sección 1). Quedan **tres preguntas pequeñas** (sección 2) y
-recorrerlo contra bdnava08 (sección 3).
+**Todo lo que respondieron está reflejado**, las dos rondas (secciones 1 y 2). **No queda ninguna pregunta
+abierta**: solo falta recorrerlo contra bdnava08 (sección 3), que necesita la dirección del servidor de prueba y las
+claves de las cuentas.
 
 **«Pedir ajuste» sigue siendo un módulo aparte**, `ajuste`, con sus propias pantallas, y **no hemos tocado
 cotización, pedido ni promoción**: todas enseñan el `msg` del backend cuando llega `409 documento en ajuste`
@@ -37,33 +39,23 @@ prueba**, y backend y frontend salen el mismo día.
 ### El menú del grupo 25
 
 Seguimos lo que fijaron en [marcas-grupo25.md](marcas-grupo25.md), sección 4: **`marcas`, `cuota`, `reporte`,
-`cobertura`, `ajuste` y `cotizacion`**, igual para jefatura y especialista. Ni `factura`, `promocion` ni
-`programador`, y el servidor de demostración de este repositorio ya devuelve exactamente ese menú. El grupo 20
-suma `ajuste` y no recibe lo que es solo del 25 (`marcas`, `reporte`, `cobertura`).
+`cobertura`, `ajuste`, `vendedormes` y `cotizacion`** (esta última clave, desde el 22/10), igual para jefatura y
+especialista. Ni `factura`, `promocion` ni `programador`, y el servidor de demostración de este repositorio ya devuelve
+exactamente ese menú. El grupo 20 suma `ajuste` y no recibe lo que es solo del 25 (`marcas`, `reporte`, `cobertura`,
+`vendedormes`).
 
 ---
 
-## 2 · Lo que queda abierto
+## 2 · Sus respuestas a la segunda ronda, y qué hicimos con cada una
 
-### 1 · ¿`ajustesPendientes` cuenta solicitudes o documentos?
+| pregunta | su respuesta | en la pantalla |
+|---|---|---|
+| 1 · ¿`ajustesPendientes` cuenta solicitudes o documentos? | **Solicitudes**, una por responsable, y solo **las que se pueden responder** (vigentes y con el documento todavía abierto) | Nada que cambiar: lo mostramos tal cual, y coincide con las filas de «Mis ajustes → Pendientes» y de «Recibidas → Pendientes». Como baja en cuanto el documento se aprueba, el numerito del menú y la pestaña dicen lo mismo aunque nadie haya abierto la lista. El servidor de demostración lo calcula igual: cierra las que ya no se pueden responder antes de contar |
+| 2 · `desde` y `hasta` mal formados | **`400 fechas invalidas`** (no `periodo invalido`): fecha mal escrita, inexistente o `desde` posterior a `hasta`; no se ignora el filtro | Si llega, la pantalla **dice el `msg` del backend donde están las fechas** y, en vez de una lista que no es la de esas fechas, *«Corrige las fechas para ver las solicitudes»* —sin el error de reintentar, porque reintentar no lo arregla—. Al corregirlas, el aviso se va y vuelve la lista. Con el selector de fechas no debería llegar: ya no dejamos mandar un `desde` posterior al `hasta` |
+| 3 · Un precio con más de dos decimales | **Redondea, la mitad hacia arriba** (8.204 → 8.20, 8.205 → 8.21, 8.206 → 8.21), y valida contra `precioMinimo` **ya redondeado** | **La pantalla hace lo mismo antes de validar**: 18.405 se guarda como 18.41 y es válido con un mínimo de 18.41; 18.404 queda en 18.40 y no. Se dice como queda (*«Se guarda como $ 18.41»*) y **lo que viaja en `confirmar` es el precio ya redondeado**. El redondeo se hace sobre el texto del número, porque `1.005 × 100` da `100.49999999999999` y el redondeo de siempre lo baja a 1.00; un precio que redondea a 0 es *«Escribe el precio»* |
 
-Una cotización con marcas de tres responsables crea **tres solicitudes** (una por responsable). Para el grupo 20
-el numerito dice «solicitudes que envió y aún no le responden». Lo mostramos tal cual, y lo natural es que coincida
-con las filas de «Mis ajustes → Pendientes» (3) y, en el grupo 25, con las de «Recibidas → Pendientes». ¿Es así,
-o cuenta documentos?
-
-### 2 · `desde` y `hasta` mal formados
-
-La pantalla solo manda fechas que salen del selector (`AAAA-MM-DD`) y no manda un `desde` posterior al `hasta`.
-Pero si llegara, ¿qué responden: `400` con qué `status` —¿`periodo invalido`, como en cuota y cobertura?—, o ignoran
-el filtro? Lo preguntamos para decir el motivo y no mostrar una lista vacía sin explicación.
-
-### 3 · Un precio con más de dos decimales
-
-Dicen que el precio *«se guarda en céntimos (8.204 queda 8.20)»*. ¿**Redondea** (8.206 → 8.21) o **trunca**
-(8.206 → 8.20)? La pantalla manda lo que la persona escribió y valida contra `precioMinimo`, así que lo permitido no
-cambia; lo preguntamos porque el precio que ve el vendedor después —en `despues.precio`— es el que decide el backend, y
-queremos decir en pantalla la misma regla.
+Con eso su documento y esta pantalla redondean igual, y lo que ve el vendedor en `despues.precio` es lo que la persona vio
+antes de confirmar.
 
 ---
 
@@ -93,7 +85,9 @@ una solicitud respondida **no se puede volver a responder**. Por eso:
 | Otra cotización | rechazar con observación, y que el vendedor la lea |
 | Una con el documento ya avanzado | que `recibidas`, `enviadas` y `solicitud` la devuelven `CERRADA`, nunca `PENDIENTE` |
 | Una vencida y una cerrada | cómo se ven en las pestañas de ambas puntas, y el filtro por fechas |
-| **`ajustesPendientes`** | que sube al enviar y baja al responder, en el 20 y en el 25 (pregunta 1) |
+| **`ajustesPendientes`** | que sube al enviar y baja al responder, en el 20 y en el 25, y que **baja también cuando el documento se aprueba**, sin abrir la lista |
+| **Un precio con tres decimales** | que `confirmar` con 18.405 deja 18.41 en `despues.precio`, y que 18.404 da `409 precio bajo costo` con un mínimo de 18.41 |
+| **`desde` y `hasta`** | un rango válido, y `400 fechas invalidas` con un `desde` posterior al `hasta` |
 | **Jefatura 071** | las líneas de marcas sin dueño de su familia |
 
 Sabemos que el simulacro no cubre lo que pasa en el ERP al confirmar (costos, totales, promociones): eso solo
@@ -107,6 +101,6 @@ lo vemos con datos reales.
 
 - [x] las pantallas de las dos puntas están construidas y probadas con el simulacro del contrato del 21/10
 - [x] sus respuestas a los diez puntos y a las dos sugerencias están reflejadas (sección 1)
-- [ ] las tres preguntas de la sección 2 están respondidas
+- [x] las tres preguntas de la segunda ronda están respondidas y reflejadas (sección 2)
 - [ ] tenemos la dirección del servidor de prueba y las claves
 - [ ] los casos de la sección 3 están recorridos contra bdnava08
