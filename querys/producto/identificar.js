@@ -6,7 +6,8 @@ let producto_id = (resolve,reject,conexion,req,next)=>{
     let prdcodi=req.body.sugerencia;
     let categoria = req.body.cctl
 
-    let sq_sql="select a.codi,a.descr,CAST(a.stoc as int)as'stoc',a.pcus,a.vvus,b.dscto_default,a.codf,a.marc from prd0101 a join dtl_dscto_marca_tc b on (b.codmar=a.codmar) join mst01cli c on (c.tipocl=b.codtcl) where a.estado=1 and a.codi=@pista and c.tipocl=@alfabeto group by a.codi,a.descr,a.stoc,a.pcus,a.vvus,b.dscto_default,a.codf,a.marc";
+    /////'stoc' es el disponible del almacen 01: stoc - (svta + pedi), como en /producto/buscar
+    let sq_sql="select a.codi,a.descr,(CAST(ISNULL(a.stoc,0) as int)-(CAST(ISNULL(a.svta,0) as int)+CAST(ISNULL(a.pedi,0) as int))) as 'stoc',a.pcus,a.vvus,b.dscto_default,a.codf,a.marc from prd0101 a join dtl_dscto_marca_tc b on (b.codmar=a.codmar) join mst01cli c on (c.tipocl=b.codtcl) where a.estado=1 and a.codi=@pista and c.tipocl=@alfabeto group by a.codi,a.descr,a.stoc,a.svta,a.pedi,a.pcus,a.vvus,b.dscto_default,a.codf,a.marc";
     let consulta= new Request(sq_sql,(err,rowCount,rows)=>{
         if(err){
             conexion.close();
