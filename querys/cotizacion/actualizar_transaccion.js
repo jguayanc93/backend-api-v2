@@ -60,6 +60,16 @@ function grabarLinea(conexion, linea){
         conexion.callProcedure(consulta);
     });
 }
+/////true si todos los codigos estan en tbl01alm con estado=1
+async function almacenesValidos(conexion, codigos){
+    const distintos = [...new Set(codigos.map(c => String(c == null ? '' : c).trim()))];
+    if(distintos.some(c => c === '')) return false;
+    const parametros = distintos.map((c,i)=>({nombre:'a'+i,tipo:TYPES.VarChar,valor:c}));
+    const r = await ejecutar(conexion,
+        "select count(*) from tbl01alm where estado=1 and codalm in ("+parametros.map(p=>'@'+p.nombre).join(',')+")",
+        parametros);
+    return Number(r.rows[0][0].value) === distintos.length;
+}
 function iniciar(conexion){
     return new Promise((res,rej)=>conexion.beginTransaction(e=>e?rej(e):res(),'actualizar_coti'));
 }
@@ -81,6 +91,16 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
         return reject("coti desconocida");
     }
 
+    /////Cada linea trae su propio ndocu (posicion 2) y GrabaDTLCotFac la graba donde diga
+    /////ese ndocu. Antes solo se miraba el de la primera linea para comprobar la propiedad,
+    /////asi que una linea con otro numero se insertaba en la cotizacion de otro vendedor.
+    for(const linea of orden){
+        if(!Array.isArray(linea) || String(linea[2]||'').trim() !== documento){
+            conexion.close();
+            return reject("linea ajena");
+        }
+    }
+
     let abierta=false;
     try{
         await iniciar(conexion);
@@ -90,7 +110,7 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
         /////   flag y estado se comparan como texto: las anuladas tienen flag='*' y
         /////   convertirlo a numero revienta la consulta.
         const duenio = await ejecutar(conexion,
-            "select rtrim(mone), tcam from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
+            "select rtrim(mone), tcam, cdocu, codcli from mst01cot with (updlock) where ndocu=@coti and codven_usu=@codven and flag='0' and estado='0'",
             [{nombre:'coti',tipo:TYPES.VarChar,valor:documento},
              {nombre:'codven',tipo:TYPES.VarChar,valor:codven}]);
 
@@ -108,9 +128,20 @@ let actualizar_cotizacion = async (resolve,reject,conexion,galleta,documento,lin
         /////la moneda y el tipo de cambio de cada linea son los de la cabecera, no los del
         /////cuerpo: asi ninguna linea queda en otra moneda ni con otro tc. Los importes si
         /////vienen del cuerpo, ya en la moneda del documento (docs/cotizacion-moneda.md).
+        /////Lo mismo para la serie (cdocu) y el cliente: salen de la cabecera.
         const mone = duenio.rows[0][0].value;
         const tcam = duenio.rows[0][1].value;
-        for(const linea of orden){ linea[4] = tcam; linea[5] = mone; }
+        const cdocu = duenio.rows[0][2].value;
+        const codcli = duenio.rows[0][3].value;
+        for(const linea of orden){ linea[1] = cdocu; linea[3] = codcli; linea[4] = tcam; linea[5] = mone; }
+
+        /////el almacen de cada linea tiene que existir y estar activo (tbl01alm), igual que
+        /////en /pedido/almacen: un codigo inventado pasaba sin error
+        if(!(await almacenesValidos(conexion, orden.map(l => l[19])))){
+            await revertir(conexion); abierta=false;
+            conexion.close();
+            return reject("almacen invalido");
+        }
 
         /////2) fuera el detalle viejo
         await ejecutarContando(conexion,

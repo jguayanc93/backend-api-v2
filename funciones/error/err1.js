@@ -152,8 +152,40 @@ const error_corrector=(res,mensaje)=>{
         case "pedido sin detalle":
             res.status(409).json({"status":mensaje,"codigo":3,"msg":"el pedido no tiene lineas que cambiar de almacen"})
             break;
+        /////cotizacion (revision del 18/11/2026)
+        case "linea ajena":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"todas las lineas deben llevar el numero de la cotizacion que se modifica"})
+            break;
+        case "producto repetido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"un mismo producto viene mas de una vez; junte las cantidades en una sola linea"})
+            break;
+        case "cotizacion vacia":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la cotizacion no trae productos"})
+            break;
         case "almacen invalido":
             res.status(400).json({"status":mensaje,"codigo":2,"msg":"el almacen no existe o no esta activo"})
+            break;
+        /////coti -> pedido (18/11/2026)
+        case "coti sin aprobar":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"solo se puede pasar a pedido una cotizacion aprobada"})
+            break;
+        case "coti ya convertida":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"la cotizacion ya genero un documento (pedido, factura o boleta); no se le puede crear otro"})
+            break;
+        case "coti fuera de plazo":
+            res.status(409).json({"status":mensaje,"codigo":3,"msg":"la cotizacion tiene mas de 5 dias sin contar el domingo; ya no se puede pasar a pedido"})
+            break;
+        case "tipo entrega invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"el tipo de entrega debe ser 1 (ventanilla), 3 (Lima) o 4 (provincia)"})
+            break;
+        case "transportista invalido":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"en provincia hay que elegir un transportista activo"})
+            break;
+        case "direccion invalida":
+            res.status(400).json({"status":mensaje,"codigo":2,"msg":"la direccion de entrega debe ser una de las registradas del cliente"})
+            break;
+        case "pedido no creado":
+            res.status(500).json({"status":mensaje,"codigo":1,"msg":"el pedido no llego a grabarse completo y se revirtio; la cotizacion quedo como estaba"})
             break;
         case "cuota no corresponde":
             res.status(200).json({"status":mensaje,"codigo":0,"msg":"tu tipo de vendedor no lleva cuota mensual","aplica":false})

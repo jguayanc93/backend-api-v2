@@ -24,7 +24,7 @@ async function almacen_cambio(req,res,next) {
         finally{ revision.close(); }
         if(bloqueado) return error_corrector(res,"documento en ajuste");
         const quinta_call = await obtenerpromesa_conexion();
-        const sexta_call = await consulta3(quinta_call,req.body);
+        const sexta_call = await consulta3(quinta_call,req.body,primera_call);
 
         res.status(200).send(sexta_call);
     }
@@ -39,7 +39,7 @@ function consulta1(req,next){ return new Promise((resolve,reject)=>galleta_crede
 
 function consulta2(conexion,galleta,body){ return new Promise((resolve,reject)=>coti_validar_vendedor(resolve,reject,conexion,galleta,body)) }
 
-function consulta3(conexion,body){ return new Promise((resolve,reject)=>almacen_corregido(resolve,reject,conexion,body)) }
+function consulta3(conexion,body,galleta){ return new Promise((resolve,reject)=>almacen_corregido(resolve,reject,conexion,body,galleta)) }
 
 
 function galleta_credencial(resolve,reject,req,next){

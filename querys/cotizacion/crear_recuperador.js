@@ -24,7 +24,10 @@ let detallado_bucle =(resolve,reject,conexion,manejador,objtotal,orden,contadorr
                 conexion.close();reject("error query");
             }
             else{
-                if(rows.length==0){ reject("codigo no existe"); }
+                /////se devuelve la conexion antes de rechazar: sin este close() cada codigo
+                /////inexistente dejaba una conexion tomada para siempre, y con 10 el pool se
+                /////agotaba y todo el backend esperaba 20 s y fallaba
+                if(rows.length==0){ conexion.close(); reject("codigo no existe"); }
                 else{
                     let respuesta=[];
                     let contador=0;

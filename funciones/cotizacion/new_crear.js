@@ -12,6 +12,7 @@ let {cotizacion_registrar_vendedor} = require('../../querys/cotizacion//otorgar_
 let {cotizacion_registrar_tcm} = require('../../querys/cotizacion/otorgar_tcm')
 let {recuperar_detallado} = require('../../querys/cotizacion/crear_recuperador')
 const {en_transaccion} = require('../../querys/cotizacion/crear_transaccion')
+const {cliente_cotizacion} = require('../../querys/cotizacion/cliente')
 ///////ESPACIO PARA FUNCIONES GENERALES
 
 ////ESPACIO PARA LOS MANEJOS DE ERRORES CON RESPUESTA
@@ -22,6 +23,18 @@ const importes = require('../comunes/importes')
 async function new_creacion(req,res,next) {
     try{
         const primera_call = await consulta1(req,next);//galletas
+
+        /////un mismo producto dos veces dejaba una sola linea en el detalle (se guardan por
+        /////codigo) pero la cabecera sumaba las dos: totales descuadrados
+        const repetido = productoRepetido(req.body ? req.body["productos"] : null);
+        if(repetido === null) return error_corrector(res,"cotizacion vacia");
+        if(repetido) return error_corrector(res,"producto repetido");
+
+        /////del cliente solo se toma el codigo; lo demas sale de mst01cli
+        const conCliente = await obtenerpromesa_conexion();
+        const cliente = await consultaCliente(conCliente, Array.isArray(req.body["cliente"]) ? req.body["cliente"][0] : null);
+        const cuerpo = Object.assign({}, req.body, {"cliente":cliente});
+
         const tercer_call = await obtenerpromesa_conexion();
         const cuarta_call = await consulta3(tercer_call);//tipo de cambio
         const activar = await obtenerpromesa_conexion();
@@ -33,14 +46,14 @@ async function new_creacion(req,res,next) {
         // const octava_call = await consulta5(setima_call,sexta_call);//actualisar el correlativo en la tabla
 
         const novena_call = await obtenerpromesa_conexion();
-        const decima_call = await consulta6(novena_call,req.body["cliente"][0]);//atencion del cliente
+        const decima_call = await consulta6(novena_call,cliente[0]);//atencion del cliente
         /////los cuatro pasos que escriben van juntos: cabecera, detalle, vendedor y tipo
         /////de cambio. Antes eran cuatro conexiones sueltas y un fallo a mitad dejaba la
         /////cotizacion sin lineas, o con lineas pero sin dueño.
         const escritura = await obtenerpromesa_conexion();
         await consultaEnTransaccion(escritura,[
-            (cx)=>consulta7(cx,cuarta_call,sexta_call,req.body["cliente"],decima_call,segundo_call,req.body["moneda"]),
-            (cx)=>consulta8(cx,req.body,segundo_call[0],cuarta_call,sexta_call),
+            (cx)=>consulta7(cx,cuarta_call,sexta_call,cliente,decima_call,segundo_call,req.body["moneda"]),
+            (cx)=>consulta8(cx,cuerpo,segundo_call[0],cuarta_call,sexta_call),
             (cx)=>consulta9(cx,primera_call,sexta_call),
             (cx)=>consulta10(cx,primera_call,sexta_call,cuarta_call[3])
         ]);
@@ -62,6 +75,22 @@ async function new_creacion(req,res,next) {
 }
 
 function obtenerpromesa_conexion(){ return new Promise((resolve,reject)=>conn(resolve,reject)) }
+
+function consultaCliente(conexion,codcli){ return new Promise((resolve,reject)=>cliente_cotizacion(resolve,reject,conexion,codcli)) }
+
+/////null si no hay productos; true si algun codigo viene mas de una vez; false si no
+function productoRepetido(productos){
+    if(!productos || typeof productos !== 'object') return null;
+    const vistos = new Set();
+    let hay = false;
+    for(const indice in productos){
+        hay = true;
+        const codigo = String((productos[indice] && productos[indice]["codigo"]) || '').trim();
+        if(vistos.has(codigo)) return true;
+        vistos.add(codigo);
+    }
+    return hay ? false : null;
+}
 
 function recuperador(conexion,productos){ return new Promise((resolve,reject)=>recuperar_detallado(resolve,reject,conexion,productos)) }
 

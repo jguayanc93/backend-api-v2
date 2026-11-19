@@ -11,7 +11,8 @@ const cotizacion={
     "leer":[20,25,32,34],
     "update":[20,25,34,32],
     "delete":[20,25,34,32],   ////el grupo 20 tambien puede dar de baja, pero solo las suyas: la propiedad la verifica la ruta
-    "alm":[20,25,34,32]
+    "alm":[20,25,34,32],
+    "pedido":[20,25]   ////pasar una coti aprobada a pedido 098- (18/11/2026); solo las propias (codven_usu)
 }
 
 const pedido={
